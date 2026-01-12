@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lumina | Fasting Coach V1</title>
+    <style>
+        :root {
+            --bg-dark: #05070a;
+            --glass: rgba(15, 20, 28, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-blue: #00d2ff;
+            --accent-purple: #9d50bb;
+            --text-main: #e0e6ed;
+            --text-dim: #94a3b8;
+            --neon-glow: 0 0 15px rgba(0, 210, 255, 0.3);
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 20% 20%, rgba(157, 80, 187, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(0, 210, 255, 0.15) 0%, transparent 40%);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- EXISTING UI STYLES --- */
+        header {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            background: rgba(5, 7, 10, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .state-chips {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .state-chips::-webkit-scrollbar { display: none; }
+
+        .chip {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .chip.active { border-color: var(--accent-blue); color: var(--accent-blue); }
+
+        .timer-container {
+            padding: 1rem;
+            background: var(--glass);
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            margin: 1rem;
+        }
+
+        .progress-bar-bg {
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            position: relative;
+            margin: 1rem 0;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+            width: 0%;
+            transition: width 1s linear;
+        }
+
+        .timer-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+        }
+
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .msg {
+            max-width: 85%;
+            padding: 0.8rem 1rem;
+            border-radius: 16px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease-out;
+        }
+        .msg.assistant {
+            align-self: flex-start;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-bottom-left-radius: 4px;
+        }
+        .msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .controls-wrapper {
+            padding: 1rem;
+            z-index: 100;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            margin-bottom: 12px;
+            scrollbar-width: none;
+        }
+        .pill {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .pill:active { transform: scale(0.95); background: rgba(255,255,255,0.1); }
+
+        .input-bar {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            padding: 4px 8px 4px 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            gap: 8px;
+        }
+        .input-bar input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 10px 0;
+            outline: none;
+            font-size: 0.95rem;
+        }
+        .btn-send, .btn-mic {
+            background: var(--accent-blue);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            color: var(--bg-dark);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .btn-mic {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+            transition: all 0.3s;
+        }
+        .btn-mic.active {
+            background: #ff4444;
+            color: white;
+            animation: micPulse 1.5s infinite;
+        }
+        @keyframes micPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 68, 68, 0); }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            padding: 1.5rem;
+        }
+        .modal-content {
+            background: #151a21;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+            padding: 1.5rem;
+            display: flex; flex-direction: column; gap: 1rem;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group label { font-size: 0.8rem; color: var(--text-dim); }
+        .form-group input, .form-group select {
+            background: #0a0e14;
+            border: 1px solid var(--glass-border);
+            padding: 12px;
+            border-radius: 12px;
+            color: white;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue));
+            color: white; border: none; padding: 14px; border-radius: 12px; font-weight: 600; cursor: pointer;
+        }
+
+        .btn-ghost {
+            background: transparent; border: 1px solid var(--glass-border); color: var(--text-dim); padding: 8px; border-radius: 8px; font-size: 0.75rem;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+        .disclaimer { font-size: 0.65rem; color: #444; text-align: center; margin-top: 10px; }
+
+        .dashboard { flex: 1; display:flex; align-items:flex-start; justify-content:center; padding: 24px 16px; }
+        .dash-card { width: 100%; max-width: 430px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 24px; padding: 18px; box-shadow: 0 20px 90px rgba(0,0,0,0.45); backdrop-filter: blur(16px); }
+        .dash-title-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .dash-title { font-weight: 800; letter-spacing: -0.3px; }
+        .dash-streak { font-size: 0.8rem; color: var(--accent-blue); background: rgba(0,210,255,0.08); border: 1px solid rgba(0,210,255,0.18); padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+        .dash-timer-row { margin-top: 14px; display:flex; flex-direction:column; gap:6px; }
+        .dash-big { font-size: 1.3rem; font-weight: 900; }
+        .dash-sub { font-size: 0.8rem; color: var(--text-dim); }
+        .dash-bar-bg { margin-top: 14px; height: 10px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow:hidden; }
+        .dash-bar-fill { height:100%; width:0%; background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); transition: width 1s linear; }
+        .dash-meta { margin-top: 10px; font-size: 0.75rem; color: var(--text-dim); }
+
+        .assistant-bubble {
+            position: fixed;
+            right: 16px;
+            bottom: calc(16px + env(safe-area-inset-bottom));
+            width: 56px; height: 56px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14);
+            background: radial-gradient(circle at 30% 30%, rgba(0,210,255,0.28), rgba(157,80,187,0.18));
+            color: white; font-size: 22px; font-weight: 900; display:flex; align-items:center; justify-content:center;
+            box-shadow: 0 0 0 6px rgba(0,210,255,0.06), 0 18px 70px rgba(0,0,0,0.55); backdrop-filter: blur(10px);
+            cursor: pointer; z-index: 600; user-select: none; animation: bubblePulse 2.8s ease-in-out infinite;
+        }
+        @keyframes bubblePulse { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-2px) } }
+
+        .assistant-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.72); backdrop-filter: blur(10px);
+            display:flex; align-items:center; justify-content:center; padding: 18px; z-index: 300;
+        }
+        .assistant-sheet {
+            width: 100%; max-width: 430px; height: 92vh; background: rgba(12, 14, 18, 0.82);
+            border: 1px solid rgba(255,255,255,0.12); border-radius: 28px; overflow: hidden;
+            box-shadow: 0 30px 120px rgba(0,0,0,0.75); transform: scale(0.98); opacity: 0;
+            animation: popIn 180ms ease-out forwards;
+        }
+        @keyframes popIn { to { transform: scale(1); opacity: 1; } }
+
+        .assistant-topbar {
+            display:flex; align-items:center; justify-content:space-between; padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.10); background: rgba(5,7,10,0.55); backdrop-filter: blur(10px);
+        }
+        .assistant-topbar-title { font-weight: 900; letter-spacing: -0.2px; }
+        .assistant-close {
+            width: 34px; height: 34px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.14);
+            background: rgba(255,255,255,0.06); color: white; font-size: 18px; cursor: pointer;
+        }
+        .assistant-shell { height: calc(92vh - 58px); display:flex; flex-direction:column; overflow:hidden; }
+
+        #assistant-overlay #chat-container { flex: 1; overflow-y: auto; padding-bottom: 140px; }
+        #assistant-overlay .controls-wrapper { position: sticky; bottom: 0; left: auto; right: auto; background: #0c0e12; }
+    </style>
+</head>
+<body>
+
+    <!-- DASHBOARD VIEW -->
+    <main id="dashboard" class="dashboard">
+        <div class="dash-card" id="dash-fasting-card">
+            <div class="dash-title-row">
+                <div class="dash-title">Fasting</div>
+                <div class="dash-streak" id="dash-streak">🔥 Streak: 0</div>
+            </div>
+
+            <div class="dash-timer-row">
+                <div class="dash-big" id="dash-main">Not fasting</div>
+                <div class="dash-sub" id="dash-sub">Tap the spark to open Lumina</div>
+            </div>
+
+            <div class="dash-bar-bg">
+                <div class="dash-bar-fill" id="dash-bar"></div>
+            </div>
+
+            <div class="dash-meta" id="dash-meta">—</div>
+        </div>
+    </main>
+
+    <!-- ASSISTANT BUBBLE -->
+    <button id="assistant-bubble" class="assistant-bubble" aria-label="Open assistant" onclick="openAssistant()">
+        ✦
+    </button>
+
+    <!-- ASSISTANT OVERLAY -->
+    <div id="assistant-overlay" class="assistant-overlay hidden" onclick="overlayClickClose(event)">
+        <div class="assistant-sheet" role="dialog" aria-modal="true" aria-label="Lumina Assistant">
+            <div class="assistant-topbar">
+                <div class="assistant-topbar-title">Lumina</div>
+                <button class="assistant-close" onclick="closeAssistant()" aria-label="Close assistant">×</button>
+            </div>
+
+            <div class="assistant-shell">
+                <header>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1 style="font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px;">LUMINA <span style="color:var(--accent-blue); font-size: 0.7rem; vertical-align: middle;">V1</span></h1>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="toggleModal('settings-modal')" class="btn-ghost">Settings</button>
+                        </div>
+                    </div>
+                    <div class="state-chips">
+                        <div id="chip-status" class="chip active">● Offline</div>
+                        <div id="chip-elapsed" class="chip">0h 0m elapsed</div>
+                        <div id="chip-streak" class="chip">🔥 Streak: 0</div>
+                        <div id="chip-hunger" class="chip">Hunger: --</div>
+                        <div id="chip-energy" class="chip">Energy: --</div>
+                    </div>
+                </header>
+
+                <div id="timer-ui" class="timer-container hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <div id="status-text" style="font-size: 0.75rem; color: var(--accent-blue); font-weight: 600; text-transform: uppercase;">Fasting Active</div>
+                            <div id="main-timer-display" style="font-size: 1.8rem; font-weight: 800; margin-top: 2px;">00:00:00</div>
+                        </div>
+                        <div id="badge-display" style="font-size: 0.7rem; background: rgba(0,210,255,0.1); padding: 4px 8px; border-radius: 8px; color: var(--accent-blue);">Pre-Ketosis</div>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="progress-fill" class="progress-bar-fill"></div>
+                    </div>
+                    <div class="timer-stats">
+                        <span id="start-time-label">Started: --:--</span>
+                        <span id="end-time-label">Goal: --:--</span>
+                    </div>
+                </div>
+
+                <div id="chat-container"></div>
+
+                <div class="controls-wrapper">
+                    <div class="quick-actions">
+                        <div class="pill" onclick="handleAction('hunger')">😫 I'm hungry</div>
+                        <div id="pill-fast-toggle" class="pill" onclick="handleAction('fast-menu')">⚡ Start Fast</div>
+                        <div class="pill" onclick="handleAction('meal-menu')">🥗 Log Meal</div>
+                        <div class="pill" onclick="handleAction('stats')">📊 Stats</div>
+                    </div>
+                    <div class="input-bar">
+                        <input type="text" id="chat-input" placeholder="Ask Lumina..." onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <button id="btn-voice" class="btn-mic" onclick="toggleVoiceCapture()" title="Voice mode">🎙</button>
+                        <button class="btn-send" onclick="sendMessage()">→</button>
+                    </div>
+                    <div class="disclaimer">Not medical advice. Consult a physician before fasting.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="fast-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 0.5rem;">Plan Fast</h3>
+            <div class="form-group">
+                <label>Target Duration (Hours)</label>
+                <select id="fast-duration">
+                    <option value="12">12 Hours (Circadian)</option>
+                    <option value="16" selected>16 Hours (Leangains)</option>
+                    <option value="18">18 Hours (4:2)</option>
+                    <option value="20">20 Hours (Warrior)</option>
+                    <option value="24">24 Hours (OMAD)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Start Time</label>
+                <input type="datetime-local" id="fast-start">
+            </div>
+            <div class="form-group">
+                <label>Last Meal Note (Optional)</label>
+                <input type="text" id="fast-note" placeholder="What did you last eat?">
+            </div>
+            <button class="btn-primary" onclick="startFast()">Activate Fast</button>
+            <button class="btn-ghost" onclick="toggleModal('fast-modal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="meal-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Log Meal</h3>
+            <div class="form-group">
+                <label>What did you eat?</label>
+                <input type="text" id="meal-text" placeholder="e.g. Avocado Toast, 2 eggs">
+            </div>
+            <div class="form-group">
+                <label>Time</label>
+                <input type="datetime-local" id="meal-time">
+            </div>
+            <div class="form-group">
+                <label>Hunger before (1-5)</label>
+                <input type="range" id="meal-hunger" min="1" max="5" value="3" oninput="this.nextElementSibling.innerText = this.value">
+                <span style="font-size:0.8rem; color:var(--accent-blue); text-align:center;">3</span>
+            </div>
+            <button class="btn-primary" onclick="saveMeal()">Log Meal</button>
+            <button class="btn-ghost" onclick="toggleModal('meal-modal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>System Controls</h3>
+            <button class="btn-ghost" onclick="exportData()">Export JSON Data</button>
+            <button class="btn-ghost" onclick="triggerImport()">Import JSON Data</button>
+            <input type="file" id="import-input" accept=".json" style="display:none;" onchange="importData(event)">
+            <button class="btn-ghost" style="color: #ff4444;" onclick="resetDay()">Reset Today's Data</button>
+            <button class="btn-primary" onclick="toggleModal('settings-modal')">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const STATE_VERSION = 2;
+        const APP_KEY = 'lumina_v1_data';
+
+        const STRINGS = {
+            HELP: { en: "How can I help you? Try: 'start fast 16', 'log meal: salad', or update your profile ('strictness 4', 'avoid sugar').", es: "¿Cómo puedo ayudarte? Prueba: 'empezar ayuno 16', 'comida: ensalada', o actualiza tu perfil ('severo 4', 'evitar azucar')." },
+            STATUS_FASTING: { en: "You are currently fasting. Stay focused!", es: "Estás en medio de un ayuno. ¡Sigue así!" },
+            STATUS_FEEDING: { en: "You are in your feeding window.", es: "Estás en tu ventana de alimentación." },
+            TIMER_LEFT: { en: "You have {time} remaining.", es: "Te faltan {time}." },
+            STARTED_FAST: { en: "Fast activated for {dur} hours. Good luck!", es: "Ayuno activado por {dur} horas. ¡Buena suerte!" },
+            ENDED_FAST: { en: "Fast ended. Break your fast wisely!", es: "Ayuno terminado. ¡Rompe el ayuno con sabiduría!" },
+            LOGGED_MEAL: { en: "Meal logged: {meal}.", es: "Comida registrada: {meal}." },
+            ASK_SPECIFIC: { en: "Can you be more specific?", es: "¿Puedes ser más específico?" },
+            HUNGER_FOLLOWUP: { en: "How are you coping? 1) Water 2) Salt 3) Walk 4) Breath 5) End fast", es: "¿Cómo lo llevas? 1) Agua 2) Sal 3) Caminar 4) Respirar 5) Terminar" },
+            PROFILE_SAVED: { en: "Profile updated.", es: "Perfil actualizado." },
+            REMEDY_CONFIRM: { en: "Logged your choice: {remedy}. Keep it up!", es: "Registré tu opción: {remedy}. ¡Sigue así!" }
+        };
+
+        const REMEDIES = {
+            en: ["None", "Water", "Salt", "Walk", "Breath", "End Fast"],
+            es: ["Ninguno", "Agua", "Sal", "Caminar", "Respirar", "Terminar"]
+        };
+
+        function localDateKey(ts) {
+            const d = new Date(ts);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function getDefaultStateV2() {
+            return {
+                meta: { version: STATE_VERSION, updatedAt: Date.now() },
+                profile: { 
+                    goal: "fat loss + energy", streak: 0, langPref: "auto", lastLang: "en", strictness: 3,
+                    wakeTime: "", sleepTime: "", avoidFoods: [], favoriteFoods: [], notes: "",
+                    voiceReplies: false
+                },
+                today: { fasting: { active: false, start: null, duration: 16, note: "" }, meals: [], hunger: 3, energy: 3 },
+                history: { fastingSessions: [], mealLogs: [], hungerEpisodes: [] },
+                chat: [{ role: 'assistant', content: "Hello, I'm Lumina. How are you feeling right now?", ts: Date.now() }]
+            };
+        }
+
+        let state = getDefaultStateV2();
+        let recognition = null;
+
+        function normalizeState(saved) {
+            const base = getDefaultStateV2();
+            if (!saved) return base;
+            
+            const merged = { ...base, ...saved };
+            merged.profile = { ...base.profile, ...saved.profile };
+            merged.today = { ...base.today, ...saved.today };
+            merged.today.fasting = { ...base.today.fasting, ...(saved.today ? saved.today.fasting : {}) };
+            merged.history = { ...base.history, ...saved.history };
+
+            merged.chat = Array.isArray(saved.chat) ? saved.chat : base.chat;
+            merged.today.meals = Array.isArray(merged.today.meals) ? merged.today.meals : [];
+            merged.history.fastingSessions = Array.isArray(merged.history.fastingSessions) ? merged.history.fastingSessions : [];
+            merged.history.mealLogs = Array.isArray(merged.history.mealLogs) ? merged.history.mealLogs : [];
+            merged.history.hungerEpisodes = Array.isArray(merged.history.hungerEpisodes) ? merged.history.hungerEpisodes : [];
+            merged.profile.avoidFoods = Array.isArray(merged.profile.avoidFoods) ? merged.profile.avoidFoods : [];
+            merged.profile.favoriteFoods = Array.isArray(merged.profile.favoriteFoods) ? merged.profile.favoriteFoods : [];
+
+            merged.today.hunger = Number(merged.today.hunger) || 3;
+            merged.today.energy = Number(merged.today.energy) || 3;
+            merged.profile.strictness = Number(merged.profile.strictness) || 3;
+
+            return merged;
+        }
+
+        function loadState() {
+            try {
+                const savedRaw = localStorage.getItem(APP_KEY);
+                state = normalizeState(savedRaw ? JSON.parse(savedRaw) : null);
+                updateDerivedStats();
+                renderChat();
+            } catch (e) { state = getDefaultStateV2(); }
+            updateUI();
+        }
+
+        function saveState() {
+            state.meta.updatedAt = Date.now();
+            localStorage.setItem(APP_KEY, JSON.stringify(state));
+        }
+
+        function computeStreakFromSessions(sessions) {
+            if (!sessions || sessions.length === 0) return 0;
+            const dates = new Set(sessions.map(s => localDateKey(s.end || s.start)));
+            let streak = 0; let current = new Date();
+            while (true) {
+                const dateStr = localDateKey(current.getTime());
+                if (dates.has(dateStr)) { streak++; current.setDate(current.getDate() - 1); } 
+                else {
+                    if (streak === 0 && dateStr === localDateKey(Date.now())) { current.setDate(current.getDate() - 1); continue; }
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        function updateDerivedStats() {
+            state.profile.streak = computeStreakFromSessions(state.history.fastingSessions);
+            const streakNodes = ['chip-streak', 'dash-streak'];
+            streakNodes.forEach(id => {
+                const node = document.getElementById(id);
+                if (node) node.innerText = `🔥 Streak: ${state.profile.streak}`;
+            });
+        }
+
+        function detectLang(text) {
+            if (state.profile.langPref !== "auto") return state.profile.langPref;
+            const esWords = ['hambre', 'ayuno', 'comida', 'falta', 'energia', 'comenzar', 'terminar', 'hola', 'idioma', 'perfil', 'evito', 'me gusta', 'severo', 'voz'];
+            return esWords.some(w => text.toLowerCase().includes(w)) ? 'es' : 'en';
+        }
+
+        function t(key, lang, vars = {}) {
+            let msg = STRINGS[key][lang] || STRINGS[key]['en'];
+            for (let v in vars) msg = msg.replace(`{${v}}`, vars[v]);
+            return msg;
+        }
+
+        function parseIntent(text) {
+            const raw = text.toLowerCase().trim();
+            if (raw.match(/(set )?(hunger|hambre) [1-5]/)) return { type: 'SET_HUNGER', data: parseInt(raw.match(/[1-5]/)[0]) };
+            if (raw.match(/(set )?(energy|energia) [1-5]/)) return { type: 'SET_ENERGY', data: parseInt(raw.match(/[1-5]/)[0]) };
+            if (raw.match(/(start|comenzar) (fast|ayuno) \d+/)) return { type: 'START_FAST', data: parseInt(raw.match(/\d+/)[0]) };
+            if (raw.match(/(end|stop|terminar) (fast|ayuno)/)) return { type: 'END_FAST' };
+            if (raw.match(/(log )?(meal|comida):/)) return { type: 'LOG_MEAL', data: text.split(':').slice(1).join(':').trim() };
+            
+            if (raw === "perfil" || raw === "show profile") return { type: 'SHOW_PROFILE' };
+            if (raw.includes("language") || raw.includes("idioma")) {
+                const lang = raw.includes("spanish") || raw.includes("español") ? "es" : raw.includes("english") || raw.includes("ingles") ? "en" : "auto";
+                return { type: 'SET_LANG_PREF', data: lang };
+            }
+            if (raw.match(/(strict|severo) [1-5]/)) return { type: 'SET_STRICTNESS', data: parseInt(raw.match(/[1-5]/)[0]) };
+            if (raw.match(/(wake|despierto) (\d{1,2}:\d{2})/)) return { type: 'SET_WAKE', data: raw.match(/\d{1,2}:\d{2}/)[0] };
+            if (raw.match(/(sleep|duermo) (\d{1,2}:\d{2})/)) return { type: 'SET_SLEEP', data: raw.match(/\d{1,2}:\d{2}/)[0] };
+            if (raw.startsWith("avoid") || raw.startsWith("evito") || raw.startsWith("evitar")) return { type: 'ADD_AVOID_FOODS', data: text.replace(/^(avoid|evito|evitar):?\s*/i, '').split(',').map(s=>s.trim()) };
+            if (raw.startsWith("like") || raw.startsWith("me gusta") || raw.startsWith("gusta")) return { type: 'ADD_FAVORITE_FOODS', data: text.replace(/^(like|me gusta|gusta):?\s*/i, '').split(',').map(s=>s.trim()) };
+            if (raw.startsWith("about me") || raw.startsWith("bio") || raw.startsWith("sobre mi")) return { type: 'SET_PROFILE_NOTES', data: text.replace(/^(about me|bio|sobre mi):?\s*/i, '').trim() };
+
+            if (raw === "voice on" || raw === "voz activada") return { type: 'SET_VOICE', data: true };
+            if (raw === "voice off" || raw === "voz desactivada") return { type: 'SET_VOICE', data: false };
+
+            if (raw.includes("status") || raw.includes("estado") || raw.includes("time left") || raw.includes("cuanto falta")) return { type: 'STATUS' };
+            if (raw.length === 1 && "12345".includes(raw)) return { type: 'HUNGER_REMEDY', data: parseInt(raw) };
+            if (raw.includes("help") || raw.includes("ayuda")) return { type: 'HELP' };
+            return null;
+        }
+
+        function toggleModal(id) {
+            const m = document.getElementById(id);
+            const isOpen = m.style.display === 'flex';
+            m.style.display = isOpen ? 'none' : 'flex';
+            
+            if (!isOpen) {
+                if (id === 'fast-modal') document.getElementById('fast-start').value = new Date().toISOString().slice(0, 16);
+                if (id === 'meal-modal') document.getElementById('meal-time').value = new Date().toISOString().slice(0, 16);
+            }
+        }
+
+        function addMessage(role, content) {
+            state.chat.push({ role, content, ts: Date.now() });
+            renderChat();
+            saveState();
+
+            if (role === 'assistant' && state.profile.voiceReplies) {
+                speakText(content);
+            }
+        }
+
+        function speakText(text) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            // Split by double newline or period to get first few sentences
+            const shortText = text.split(/\n\n|\. /)[0].substring(0, 180);
+            const utterance = new SpeechSynthesisUtterance(shortText);
+            utterance.lang = state.profile.lastLang === 'es' ? 'es-ES' : 'en-US';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function renderChat() {
+            const container = document.getElementById('chat-container');
+            if (!container) return;
+            container.innerHTML = '';
+            state.chat.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `msg ${msg.role}`;
+                div.innerText = msg.content;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function getPersonalizedHungerTip(lang) {
+            const tips = {
+                en: ["Try black coffee or green tea.", "A pinch of salt under the tongue helps.", "Take a 10-minute walk.", "Deep breathing for 2 mins.", "Hydrate with sparkling water."],
+                es: ["Prueba café negro o té verde.", "Una pizca de sal bajo la lengua ayuda.", "Camina 10 minutos.", "Respira profundo 2 minutos.", "Hidrátate con agua con gas."]
+            };
+            const list = tips[lang] || tips['en'];
+            return list[Math.floor(Math.random() * list.length)];
+        }
+
+        function getCoachingAdvice(lang = 'en') {
+            const elapsed = state.today.fasting.active ? (Date.now() - state.today.fasting.start) / 3600000 : 0;
+            const episode = { ts: Date.now(), fastingActive: state.today.fasting.active, elapsedHours: elapsed, hungerLevel: state.today.hunger, energyLevel: state.today.energy, userAction: null };
+            state.history.hungerEpisodes.push(episode);
+            
+            const isStrict = state.profile.strictness >= 4;
+            let advice = "";
+            
+            if (state.today.fasting.active) {
+                advice = isStrict ? 
+                    (lang === 'en' ? "Stay focused. Drink water. You got this." : "Enfocado. Bebe agua. Tú puedes.") :
+                    (lang === 'en' ? `Hunger is a wave. ${getPersonalizedHungerTip(lang)}` : `El hambre es una ola. ${getPersonalizedHungerTip(lang)}`);
+            } else {
+                advice = lang === 'en' ? "You're feeding. Aim for protein." : "Estás comiendo. Busca proteína.";
+                if (state.profile.avoidFoods.length > 0) {
+                    advice += lang === 'en' ? `\nAvoiding: ${state.profile.avoidFoods.join(', ')}` : `\nEvitando: ${state.profile.avoidFoods.join(', ')}`;
+                }
+            }
+
+            addMessage('assistant', advice + "\n\n" + t('HUNGER_FOLLOWUP', lang) + "\n\n*Not medical advice.*");
+            saveState();
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const raw = input.value.trim();
+            if (!raw) return;
+            addMessage('user', raw);
+            const lang = detectLang(raw);
+            state.profile.lastLang = lang;
+            const intent = parseIntent(raw);
+            input.value = '';
+
+            setTimeout(() => {
+                if (!intent) {
+                    if (raw.toLowerCase().includes("hambre") || raw.toLowerCase().includes("hungry")) getCoachingAdvice(lang);
+                    else addMessage('assistant', t('ASK_SPECIFIC', lang));
+                    return;
+                }
+                switch(intent.type) {
+                    case 'SET_HUNGER': state.today.hunger = intent.data; addMessage('assistant', `Hunger: ${intent.data}`); break;
+                    case 'SET_ENERGY': state.today.energy = intent.data; addMessage('assistant', `Energy: ${intent.data}`); break;
+                    case 'START_FAST': startFast(intent.data); addMessage('assistant', t('STARTED_FAST', lang, { dur: intent.data })); break;
+                    case 'END_FAST': endFast(); addMessage('assistant', t('ENDED_FAST', lang)); break;
+                    case 'LOG_MEAL': saveMeal(intent.data); addMessage('assistant', t('LOGGED_MEAL', lang, { meal: intent.data })); break;
+                    case 'STATUS': addMessage('assistant', state.today.fasting.active ? t('STATUS_FASTING', lang) + " " + t('TIMER_LEFT', lang, { time: getRemainingTime() }) : t('STATUS_FEEDING', lang)); break;
+                    
+                    case 'SET_LANG_PREF': state.profile.langPref = intent.data; addMessage('assistant', t('PROFILE_SAVED', lang)); break;
+                    case 'SET_STRICTNESS': state.profile.strictness = intent.data; addMessage('assistant', t('PROFILE_SAVED', lang)); break;
+                    case 'SET_WAKE': state.profile.wakeTime = intent.data; addMessage('assistant', t('PROFILE_SAVED', lang)); break;
+                    case 'SET_SLEEP': state.profile.sleepTime = intent.data; addMessage('assistant', t('PROFILE_SAVED', lang)); break;
+                    case 'SET_VOICE': state.profile.voiceReplies = intent.data; addMessage('assistant', t('PROFILE_SAVED', lang)); break;
+                    case 'ADD_AVOID_FOODS': 
+                        state.profile.avoidFoods = [...new Set([...state.profile.avoidFoods, ...intent.data])];
+                        addMessage('assistant', t('PROFILE_SAVED', lang)); 
+                        break;
+                    case 'ADD_FAVORITE_FOODS': 
+                        state.profile.favoriteFoods = [...new Set([...state.profile.favoriteFoods, ...intent.data])];
+                        addMessage('assistant', t('PROFILE_SAVED', lang)); 
+                        break;
+                    case 'SET_PROFILE_NOTES': 
+                        state.profile.notes = (state.profile.notes + " " + intent.data).trim();
+                        addMessage('assistant', t('PROFILE_SAVED', lang)); 
+                        break;
+                    
+                    case 'SHOW_PROFILE':
+                        const p = state.profile;
+                        const summary = lang === 'en' ? 
+                            `Goal: ${p.goal}\nStreak: ${p.streak}\nLang: ${p.langPref}\nStrict: ${p.strictness}/5\nWake: ${p.wakeTime}\nSleep: ${p.sleepTime}\nAvoids: ${p.avoidFoods.join(', ') || 'none'}\nLikes: ${p.favoriteFoods.join(', ') || 'none'}\nNotes: ${p.notes || 'none'}\nVoice: ${p.voiceReplies}` :
+                            `Meta: ${p.goal}\nRacha: ${p.streak}\nIdioma: ${p.langPref}\nSevero: ${p.strictness}/5\nDespierto: ${p.wakeTime}\nDuermo: ${p.sleepTime}\nEvito: ${p.avoidFoods.join(', ') || 'nada'}\nGusta: ${p.favoriteFoods.join(', ') || 'nada'}\nNotas: ${p.notes || 'ninguna'}\nVoz: ${p.voiceReplies}`;
+                        addMessage('assistant', summary);
+                        break;
+
+                    case 'HUNGER_REMEDY': 
+                        const lastEp = state.history.hungerEpisodes[state.history.hungerEpisodes.length - 1];
+                        if (lastEp) lastEp.userAction = intent.data;
+                        const remedyName = REMEDIES[lang][intent.data] || "???";
+                        addMessage('assistant', t('REMEDY_CONFIRM', lang, { remedy: remedyName }));
+                        break;
+                    case 'HELP': addMessage('assistant', t('HELP', lang)); break;
+                }
+                saveState();
+                updateUI();
+            }, 500);
+        }
+
+        function toggleVoiceCapture() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Voice not supported in this browser.");
+                return;
+            }
+
+            if (recognition) {
+                recognition.stop();
+                return;
+            }
+
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRec();
+            recognition.lang = state.profile.lastLang === 'es' ? 'es-ES' : 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                document.getElementById('btn-voice').classList.add('active');
+            };
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                document.getElementById('chat-input').value = speechResult;
+                sendMessage();
+            };
+
+            recognition.onend = () => {
+                document.getElementById('btn-voice').classList.remove('active');
+                recognition = null;
+            };
+
+            recognition.onerror = (err) => {
+                console.error("Speech Recognition Error", err);
+                document.getElementById('btn-voice').classList.remove('active');
+                recognition = null;
+            };
+
+            recognition.start();
+        }
+
+        function startFast(hoursOverride = null) {
+            const start = hoursOverride ? new Date().toISOString() : document.getElementById('fast-start').value;
+            const dur = hoursOverride || parseInt(document.getElementById('fast-duration').value);
+            state.today.fasting = { active: true, start: new Date(start).getTime(), duration: dur, note: "" };
+            if (!hoursOverride) toggleModal('fast-modal');
+            saveState(); updateUI();
+        }
+
+        function endFast() {
+            state.history.fastingSessions.push({ ...state.today.fasting, end: Date.now() });
+            state.today.fasting.active = false;
+            saveState(); updateUI();
+        }
+
+        function saveMeal(textOverride = null) {
+            const mealTextEl = document.getElementById('meal-text');
+            const mealTimeEl = document.getElementById('meal-time');
+            const mealHungerEl = document.getElementById('meal-hunger');
+
+            let text, time, hunger;
+
+            if (textOverride) {
+                text = textOverride;
+                time = new Date().toISOString();
+                hunger = state.today.hunger;
+            } else {
+                text = mealTextEl.value.trim();
+                time = mealTimeEl.value;
+                hunger = parseInt(mealHungerEl.value);
+
+                if (!text) {
+                    alert("Please enter what you ate.");
+                    return;
+                }
+            }
+
+            const meal = { text, time, hunger, ts: Date.now() };
+            state.today.meals.push(meal);
+            state.history.mealLogs.push(meal);
+            
+            if (!textOverride) {
+                mealTextEl.value = '';
+                toggleModal('meal-modal');
+            }
+            saveState(); updateUI();
+        }
+
+        function handleAction(action) {
+            if (action === 'fast-menu') state.today.fasting.active ? (confirm("End fast?") && endFast()) : toggleModal('fast-modal');
+            else if (action === 'hunger') getCoachingAdvice(state.profile.lastLang);
+            else if (action === 'meal-menu') toggleModal('meal-modal');
+            else if (action === 'stats') {
+                const lang = state.profile.lastLang;
+                addMessage('assistant', lang === 'en' ? `Streak: ${state.profile.streak} days.` : `Racha: ${state.profile.streak} días.`);
+            }
+        }
+
+        function getRemainingTime() {
+            if (!state.today.fasting.active) return "0h 0m";
+            const diff = (state.today.fasting.start + state.today.fasting.duration * 3600000) - Date.now();
+            return diff <= 0 ? "0h 0m" : `${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`;
+        }
+
+        function updateUI() {
+            const f = state.today.fasting;
+            const pill = document.getElementById('pill-fast-toggle');
+            const timerUi = document.getElementById('timer-ui');
+            if (pill) pill.innerText = f.active ? "⚡ End Fast" : "⚡ Start Fast";
+            if (timerUi) f.active ? timerUi.classList.remove('hidden') : timerUi.classList.add('hidden');
+            
+            const statusChip = document.getElementById('chip-status');
+            if (statusChip) {
+                statusChip.innerText = f.active ? "● Fasting" : "● Feeding";
+                f.active ? statusChip.classList.add('active') : statusChip.classList.remove('active');
+            }
+            
+            document.getElementById('chip-hunger').innerText = `Hunger: ${state.today.hunger}`;
+            document.getElementById('chip-energy').innerText = `Energy: ${state.today.energy}`;
+            updateDerivedStats();
+            updateDashboardCard();
+        }
+
+        function updateDashboardCard() {
+            const f = state.today.fasting;
+            const dashMain = document.getElementById('dash-main');
+            const dashSub = document.getElementById('dash-sub');
+            const dashBar = document.getElementById('dash-bar');
+            const dashMeta = document.getElementById('dash-meta');
+
+            if (f.active) {
+                const elapsedMs = Date.now() - f.start;
+                const targetMs = f.duration * 3600000;
+                const elapsedH = Math.floor(elapsedMs / 3600000);
+                const elapsedM = Math.floor((elapsedMs % 3600000) / 60000);
+                dashMain.innerText = `Fasting: ${elapsedH}h ${elapsedM}m elapsed`;
+                dashSub.innerText = `Remaining: ${getRemainingTime()} • Goal ${f.duration}h`;
+                dashBar.style.width = Math.min(100, (elapsedMs / targetMs) * 100) + '%';
+                dashMeta.innerText = `Started ${new Date(f.start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} • Goal ${new Date(f.start+targetMs).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+            } else {
+                dashMain.innerText = "Not fasting";
+                dashSub.innerText = "Tap ✦ to open Lumina";
+                dashBar.style.width = "0%";
+                dashMeta.innerText = "—";
+            }
+        }
+
+        function updateLoop() {
+            if (state.today.fasting.active) {
+                const elapsedMs = Date.now() - state.today.fasting.start;
+                const hours = Math.floor(elapsedMs / 3600000);
+                const mins = Math.floor((elapsedMs % 3600000) / 60000);
+                const secs = Math.floor((elapsedMs % 60000) / 1000);
+                const timerDisplay = document.getElementById('main-timer-display');
+                if (timerDisplay) timerDisplay.innerText = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                const chipElapsed = document.getElementById('chip-elapsed');
+                if (chipElapsed) chipElapsed.innerText = `${hours}h ${mins}m elapsed`;
+                const fill = document.getElementById('progress-fill');
+                if (fill) fill.style.width = Math.min(100, (elapsedMs / (state.today.fasting.duration * 3600000)) * 100) + '%';
+                updateDashboardCard();
+            }
+        }
+
+        function openAssistant() {
+            document.getElementById('assistant-overlay').classList.remove('hidden');
+            setTimeout(() => document.getElementById('chat-input').focus(), 200);
+        }
+        function closeAssistant() { document.getElementById('assistant-overlay').classList.add('hidden'); }
+        function overlayClickClose(event) { if (event.target.id === "assistant-overlay") closeAssistant(); }
+
+        function resetDay() { if (confirm("Reset today?")) { state.today = getDefaultStateV2().today; saveState(); location.reload(); } }
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+            const dl = document.createElement('a'); dl.setAttribute("href", dataStr); dl.setAttribute("download", `lumina.json`); dl.click();
+        }
+        function triggerImport() { document.getElementById('import-input').click(); }
+        function importData(e) {
+            const file = e.target.files[0]; if (!file) return;
+            const r = new FileReader(); r.onload = (ev) => { try { state = normalizeState(JSON.parse(ev.target.result)); saveState(); location.reload(); } catch(err){alert("Error");} };
+            r.readAsText(file);
+        }
+
+        window.onload = () => { loadState(); setInterval(updateLoop, 1000); };
+    </script>
+</body>
+</html>
