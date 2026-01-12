@@ -5,26 +5,161 @@
 </head>
 <body>
 
-    <!-- DASHBOARD VIEW -->
-    <main id="dashboard" class="dashboard">
-        <div class="dash-card" id="dash-fasting-card">
-            <div class="dash-title-row">
-                <div class="dash-title">Fasting</div>
-                <div class="dash-streak" id="dash-streak">🔥 Streak: 0</div>
-            </div>
+   <!-- SCREENS -->
+<main id="dashboard" class="dashboard" data-screen="dashboard">
+  <div class="dash-card" id="dash-fasting-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Fasting</div>
+      <div class="dash-streak" id="dash-streak">🔥 Streak: 0</div>
+    </div>
 
-            <div class="dash-timer-row">
-                <div class="dash-big" id="dash-main">Not fasting</div>
-                <div class="dash-sub" id="dash-sub">Tap the spark to open Lumina</div>
-            </div>
+    <div class="dash-timer-row">
+      <div class="dash-big" id="dash-main">Not fasting</div>
+      <div class="dash-sub" id="dash-sub">Tap the spark to open Lumina</div>
+    </div>
 
-            <div class="dash-bar-bg">
-                <div class="dash-bar-fill" id="dash-bar"></div>
-            </div>
+    <!-- FASTING STAGE (new) -->
+<div class="dash-stage">
+  <div class="dash-stage-left">
+    <div class="dash-stage-label">Stage</div>
+    <div class="dash-stage-value" id="dash-stage">—</div>
+  </div>
 
-            <div class="dash-meta" id="dash-meta">—</div>
-        </div>
-    </main>
+  <div class="dash-stage-right">
+    <div class="dash-stage-label">Next</div>
+    <div class="dash-stage-value" id="dash-next">—</div>
+  </div>
+</div>
+
+<div class="dash-milestones" id="dash-milestones">
+  <div class="milestone" data-ms="0">0h</div>
+  <div class="milestone" data-ms="12">12h</div>
+  <div class="milestone" data-ms="16">16h</div>
+  <div class="milestone" data-ms="24">24h</div>
+</div>
+
+    <div class="dash-bar-bg">
+      <div class="dash-bar-fill" id="dash-bar"></div>
+    </div>
+
+    <div class="dash-meta" id="dash-meta">—</div>
+  </div>
+</main>
+
+<!-- FASTING TAB (CONTROL CENTER) -->
+<main id="screen-fasting" class="dashboard hidden" data-screen="fasting">
+  <div class="dash-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Fasting</div>
+      <div class="dash-streak" id="fasting-status-pill">⏳ Not fasting</div>
+    </div>
+
+    <div class="dash-timer-row">
+      <div class="dash-big" id="fasting-main">Not fasting</div>
+      <div class="dash-sub" id="fasting-sub">Start a fast to see progress + stages.</div>
+    </div>
+
+    <!-- Stage / Next -->
+    <div class="dash-stage">
+      <div class="dash-stage-left">
+        <div class="dash-stage-label">Stage</div>
+        <div class="dash-stage-value" id="fasting-stage">—</div>
+      </div>
+
+      <div class="dash-stage-right">
+        <div class="dash-stage-label">Next</div>
+        <div class="dash-stage-value" id="fasting-next">—</div>
+      </div>
+    </div>
+
+    <!-- Milestones -->
+    <div class="dash-milestones" id="fasting-milestones">
+      <div class="milestone" data-ms="0">0h</div>
+      <div class="milestone" data-ms="12">12h</div>
+      <div class="milestone" data-ms="16">16h</div>
+      <div class="milestone" data-ms="24">24h</div>
+    </div>
+
+    <!-- Progress -->
+    <div class="dash-bar-bg">
+      <div class="dash-bar-fill" id="fasting-bar"></div>
+    </div>
+
+    <div class="dash-meta" id="fasting-meta">—</div>
+
+    <!-- Controls -->
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
+      <!-- Presets -->
+      <button class="pill" type="button" onclick="startFast(12)">⏳ 12h</button>
+      <button class="pill" type="button" onclick="startFast(16)">⚡ 16h</button>
+      <button class="pill" type="button" onclick="startFast(18)">🔥 18h</button>
+      <button class="pill" type="button" onclick="startFast(20)">🛡 20h</button>
+      <button class="pill" type="button" onclick="startFast(24)">👑 24h</button>
+
+      <!-- Custom (uses your existing modal) -->
+      <button class="pill" type="button" onclick="toggleModal('fast-modal')">🧩 Custom</button>
+
+      <!-- End -->
+      <button class="pill" type="button" onclick="confirm('End current fast?') && endFast()">🧨 End fast</button>
+
+      <!-- Quick logs -->
+      <button class="pill" type="button" onclick="toggleModal('meal-modal')">🥗 Log meal</button>
+    </div>
+  </div>
+</main>
+
+<main id="screen-coach" class="dashboard hidden" data-screen="coach">
+  <div class="dash-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Coach</div>
+      <div class="dash-streak">✨</div>
+    </div>
+    <div class="dash-timer-row">
+      <div class="dash-big">Coming soon</div>
+      <div class="dash-sub">We’ll add routines + guidance here.</div>
+    </div>
+    <div class="dash-meta">—</div>
+  </div>
+</main>
+
+<main id="screen-exercise" class="dashboard hidden" data-screen="exercise">
+  <div class="dash-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Exercise</div>
+      <div class="dash-streak">💪</div>
+    </div>
+    <div class="dash-timer-row">
+      <div class="dash-big">Coming soon</div>
+      <div class="dash-sub">We’ll add workouts + tracking here.</div>
+    </div>
+    <div class="dash-meta">—</div>
+  </div>
+</main>
+
+<main id="screen-profile" class="dashboard hidden" data-screen="profile">
+  <div class="dash-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Profile</div>
+      <div class="dash-streak">⚙️</div>
+    </div>
+    <div class="dash-timer-row">
+      <div class="dash-big">Coming soon</div>
+      <div class="dash-sub">Settings + goals will live here.</div>
+    </div>
+    <div class="dash-meta">—</div>
+  </div>
+</main>
+
+
+
+<!-- BOTTOM TAB BAR (single source of truth) -->
+<nav id="bottom-nav" class="bottom-nav" aria-label="Main tabs">
+  <button class="tab active" data-tab="dashboard" type="button">🏠<span>Home</span></button>
+  <button class="tab" data-tab="fasting" type="button">⏳<span>Fasting</span></button>
+  <button class="tab" data-tab="coach" type="button">✨<span>Coach</span></button>
+  <button class="tab" data-tab="exercise" type="button">💪<span>Exercise</span></button>
+  <button class="tab" data-tab="profile" type="button">⚙️<span>Profile</span></button>
+</nav>
 
     <!-- ASSISTANT BUBBLE -->
     <button id="assistant-bubble" class="assistant-bubble" aria-label="Open assistant" onclick="openAssistant()">
@@ -151,7 +286,9 @@
             <button class="btn-primary" onclick="toggleModal('settings-modal')">Close</button>
         </div>
     </div>
-
-   <script src="./assets/js/app.js" defer></script>
+    
+   <!-- SCRIPTS -->
+<script src="assets/js/fastingStages.js"></script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>

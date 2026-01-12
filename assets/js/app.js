@@ -42,6 +42,56 @@ const STATE_VERSION = 2;
         let state = getDefaultStateV2();
         let recognition = null;
 
+        // ------------------------------
+// Bottom Nav: screen switching
+// ------------------------------
+function showScreen(screenName) {
+  // Preferred: data-screen
+  let screens = document.querySelectorAll('[data-screen]');
+
+  // Fallback: if your HTML doesn't have data-screen yet, use IDs
+  if (!screens || screens.length === 0) {
+    const ids = ['dashboard', 'coach', 'exercise', 'profile'];
+    screens = ids
+      .map(id => document.getElementById(id))
+      .filter(Boolean);
+  }
+
+  screens.forEach(el => {
+    const key = el.getAttribute?.('data-screen') || el.id;
+    const isTarget = key === screenName;
+    el.classList.toggle('hidden', !isTarget);
+  });
+
+  // Active tab styling
+  const tabs = document.querySelectorAll('.bottom-nav .tab');
+  tabs.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === screenName);
+  });
+
+  try { localStorage.setItem('lumina_active_tab', screenName); } catch(e) {}
+}
+
+function initBottomNav() {
+  const nav = document.querySelector('.bottom-nav');
+  if (!nav) return;
+
+  nav.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    const tab = btn.dataset.tab;
+    if (!tab) return;
+    showScreen(tab);
+  });
+
+  // Restore last tab (default dashboard)
+  let saved = null;
+  try { saved = localStorage.getItem('lumina_active_tab'); } catch(e) {}
+  showScreen(saved || 'dashboard');
+}
+
+// Call this inside window.onload after loadState()
+
         function normalizeState(saved) {
             const base = getDefaultStateV2();
             if (!saved) return base;
@@ -153,10 +203,20 @@ const STATE_VERSION = 2;
             m.style.display = isOpen ? 'none' : 'flex';
             
             if (!isOpen) {
-                if (id === 'fast-modal') document.getElementById('fast-start').value = new Date().toISOString().slice(0, 16);
-                if (id === 'meal-modal') document.getElementById('meal-time').value = new Date().toISOString().slice(0, 16);
+                if (id === 'fast-modal') document.getElementById('fast-start').value = toLocalDateTimeValue(new Date());
+                if (id === 'meal-modal') document.getElementById('meal-time').value = toLocalDateTimeValue(new Date());
             }
         }
+
+        function toLocalDateTimeValue(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  const mm = pad(date.getMonth() + 1);
+  const dd = pad(date.getDate());
+  const hh = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+}
 
         function addMessage(role, content) {
             state.chat.push({ role, content, ts: Date.now() });
@@ -408,31 +468,175 @@ const STATE_VERSION = 2;
             document.getElementById('chip-energy').innerText = `Energy: ${state.today.energy}`;
             updateDerivedStats();
             updateDashboardCard();
+            updateFastingScreen();
         }
 
-        function updateDashboardCard() {
-            const f = state.today.fasting;
-            const dashMain = document.getElementById('dash-main');
-            const dashSub = document.getElementById('dash-sub');
-            const dashBar = document.getElementById('dash-bar');
-            const dashMeta = document.getElementById('dash-meta');
+        // ===============================
+// FASTING TAB SCREEN (placeholder)
+// ===============================
+function updateFastingScreen() {
+  // Later we’ll build the full fasting control center here.
+  // For now this prevents the app from crashing.
+}
 
-            if (f.active) {
-                const elapsedMs = Date.now() - f.start;
-                const targetMs = f.duration * 3600000;
-                const elapsedH = Math.floor(elapsedMs / 3600000);
-                const elapsedM = Math.floor((elapsedMs % 3600000) / 60000);
-                dashMain.innerText = `Fasting: ${elapsedH}h ${elapsedM}m elapsed`;
-                dashSub.innerText = `Remaining: ${getRemainingTime()} • Goal ${f.duration}h`;
-                dashBar.style.width = Math.min(100, (elapsedMs / targetMs) * 100) + '%';
-                dashMeta.innerText = `Started ${new Date(f.start).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} • Goal ${new Date(f.start+targetMs).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
-            } else {
-                dashMain.innerText = "Not fasting";
-                dashSub.innerText = "Tap ✦ to open Lumina";
-                dashBar.style.width = "0%";
-                dashMeta.innerText = "—";
-            }
-        }
+        // --- DASHBOARD FASTING STAGE (new) ---
+const DASH_MILESTONES_HOURS = [0, 12, 16, 24];
+
+function fmtHmFromMs(ms) {
+  const safe = Math.max(0, ms);
+  const totalMin = Math.ceil(safe / 60000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${m}m`;
+}
+
+function getStageLabel(elapsedHours, lang = "en") {
+  const labels = {
+    en: [
+      { at: 0,  name: "Blood Sugar Dropping" },
+      { at: 12, name: "Ketosis Beginning" },
+      { at: 16, name: "Autophagy Initiated" },
+      { at: 24, name: "Deep Fast" }
+    ],
+    es: [
+      { at: 0,  name: "Bajando azúcar en sangre" },
+      { at: 12, name: "Comenzando cetosis" },
+      { at: 16, name: "Autofagia iniciada" },
+      { at: 24, name: "Ayuno profundo" }
+    ]
+  };
+
+  const list = labels[lang] || labels.en;
+  let current = list[0].name;
+  for (const s of list) {
+    if (elapsedHours >= s.at) current = s.name;
+  }
+  return current;
+}
+
+function updateDashboardStageUI(elapsedMs) {
+  const dashStage = document.getElementById("dash-stage");
+  const dashNext = document.getElementById("dash-next");
+  const milestonesWrap = document.getElementById("dash-milestones");
+
+  if (!dashStage || !dashNext || !milestonesWrap) return;
+
+  const lang = (state && state.profile && state.profile.lastLang) ? state.profile.lastLang : "en";
+  const elapsedHours = elapsedMs / 3600000;
+
+  // Stage text
+  dashStage.innerText = getStageLabel(elapsedHours, lang);
+
+  // Next milestone
+  const nextHour = DASH_MILESTONES_HOURS.find(h => h > elapsedHours);
+  if (!nextHour) {
+    dashNext.innerText = (lang === "es") ? "Completado ✓" : "Completed ✓";
+  } else {
+    const nextMs = (nextHour * 3600000) - elapsedMs;
+    const prefix = (lang === "es") ? "En " : "In ";
+    dashNext.innerText = `${prefix}${fmtHmFromMs(nextMs)} → ${nextHour}h`;
+  }
+
+  // Milestone chip states
+  const chips = milestonesWrap.querySelectorAll(".milestone");
+  chips.forEach(chip => {
+    const h = Number(chip.getAttribute("data-ms"));
+    chip.classList.remove("done", "active");
+
+    if (elapsedHours >= h) chip.classList.add("done");
+    if (nextHour !== undefined && h === nextHour) chip.classList.add("active");
+  });
+}
+
+function resetDashboardStageUI() {
+  const dashStage = document.getElementById("dash-stage");
+  const dashNext = document.getElementById("dash-next");
+  const milestonesWrap = document.getElementById("dash-milestones");
+
+  if (dashStage) dashStage.innerText = "—";
+  if (dashNext) dashNext.innerText = "—";
+
+  if (milestonesWrap) {
+    milestonesWrap.querySelectorAll(".milestone").forEach(chip => {
+      chip.classList.remove("done", "active");
+    });
+  }
+}
+
+        function setMilestonesUI(containerEl, elapsedHours) {
+  if (!containerEl) return;
+  const nodes = Array.from(containerEl.querySelectorAll(".milestone"));
+  nodes.forEach(n => {
+    const h = Number(n.getAttribute("data-ms"));
+    n.classList.toggle("reached", elapsedHours >= h);
+    n.classList.remove("current");
+  });
+
+  // mark "current" as the next milestone not yet reached
+  const next = nodes.find(n => elapsedHours < Number(n.getAttribute("data-ms")));
+  if (next) next.classList.add("current");
+}
+
+function updateDashboardCard() {
+  const f = state.today.fasting;
+
+  const dashMain = document.getElementById("dash-main");
+  const dashSub = document.getElementById("dash-sub");
+  const dashBar = document.getElementById("dash-bar");
+  const dashMeta = document.getElementById("dash-meta");
+
+  const dashStage = document.getElementById("dash-stage");
+  const dashNext = document.getElementById("dash-next");
+  const dashMilestones = document.getElementById("dash-milestones");
+
+  if (!dashMain || !dashSub || !dashBar || !dashMeta) return;
+
+  if (!f.active) {
+    dashMain.innerText = "Not fasting";
+    dashSub.innerText = "Tap ✦ to open Lumina";
+    dashBar.style.width = "0%";
+    dashMeta.innerText = "—";
+    if (dashStage) dashStage.innerText = "—";
+    if (dashNext) dashNext.innerText = "—";
+    setMilestonesUI(dashMilestones, 0);
+    return;
+  }
+
+  const eMs = elapsedMs(f);
+  const elapsedHours = eMs / 3600000;
+  const targetMs = f.duration * 3600000;
+
+  const h = Math.floor(eMs / 3600000);
+  const m = Math.floor((eMs % 3600000) / 60000);
+
+  const percent = Math.min(100, (eMs / targetMs) * 100);
+  dashBar.style.width = percent + "%";
+
+  dashMain.innerText = `Fasting: ${h}h ${m}m elapsed`;
+
+  const remaining = formatHM(getRemainingMs(f));
+  dashSub.innerText = `Remaining: ${remaining} • Goal ${f.duration}h`;
+
+  const startLabel = formatTime(f.start);
+  const goalLabel = formatTime(f.start + targetMs);
+  dashMeta.innerText = `Started ${startLabel} • Goal ${goalLabel}`;
+
+  const stageInfo = getStageInfo(elapsedHours);
+  if (dashStage) dashStage.innerText = stageInfo.stage;
+
+  if (dashNext) {
+    if (stageInfo.nextAt == null) {
+      dashNext.innerText = "Complete";
+    } else {
+      const msToNext = Math.max(0, (stageInfo.nextAt * 3600000) - eMs);
+      dashNext.innerText = `${formatHM(msToNext)} → ${stageInfo.nextLabel}`;
+    }
+  }
+
+  setMilestonesUI(dashMilestones, elapsedHours);
+}
+
+
 
         function updateLoop() {
             if (state.today.fasting.active) {
@@ -447,6 +651,7 @@ const STATE_VERSION = 2;
                 const fill = document.getElementById('progress-fill');
                 if (fill) fill.style.width = Math.min(100, (elapsedMs / (state.today.fasting.duration * 3600000)) * 100) + '%';
                 updateDashboardCard();
+                updateFastingScreen();
             }
         }
 
@@ -469,4 +674,73 @@ const STATE_VERSION = 2;
             r.readAsText(file);
         }
 
-        window.onload = () => { loadState(); setInterval(updateLoop, 1000); };
+        function initTabs() {
+  const tabs = document.querySelectorAll('.bottom-nav .tab');
+  if (!tabs.length) {
+    console.warn('No tabs found: .bottom-nav .tab');
+    return;
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      console.log('Tab clicked:', target);
+      showScreen(target);
+    });
+  });
+
+  // Load last tab (optional)
+  const saved = localStorage.getItem('lumina_active_tab') || 'dashboard';
+  showScreen(saved);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initTabs();
+});
+
+        window.onload = () => {
+  loadState();
+  initBottomNav();
+  setInterval(updateLoop, 1000);
+};
+
+        // expose functions used by inline HTML onclick=""
+window.openAssistant = openAssistant;
+window.closeAssistant = closeAssistant;
+window.overlayClickClose = overlayClickClose;
+
+window.toggleModal = toggleModal;
+window.sendMessage = sendMessage;
+window.handleAction = handleAction;
+
+window.startFast = startFast;
+window.endFast = endFast;
+window.saveMeal = saveMeal;
+
+window.toggleVoiceCapture = toggleVoiceCapture;
+
+// ===== EXPOSE GLOBALS (for inline onclick) =====
+window.openAssistant = openAssistant;
+window.closeAssistant = closeAssistant;
+window.overlayClickClose = overlayClickClose;
+window.toggleModal = toggleModal;
+window.sendMessage = sendMessage;
+window.handleAction = handleAction;
+window.startFast = startFast;
+window.endFast = endFast;
+window.saveMeal = saveMeal;
+window.toggleVoiceCapture = toggleVoiceCapture;
+
+// ===============================
+// GLOBAL HOOKS (for onclick="...")
+// ===============================
+window.openAssistant = openAssistant;
+window.closeAssistant = closeAssistant;
+window.overlayClickClose = overlayClickClose;
+window.toggleModal = toggleModal;
+window.sendMessage = sendMessage;
+window.handleAction = handleAction;
+window.startFast = startFast;
+window.endFast = endFast;
+window.saveMeal = saveMeal;
+window.toggleVoiceCapture = toggleVoiceCapture;

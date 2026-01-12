@@ -254,6 +254,58 @@
         .dash-bar-fill { height:100%; width:0%; background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); transition: width 1s linear; }
         .dash-meta { margin-top: 10px; font-size: 0.75rem; color: var(--text-dim); }
 
+        /* --- DASH FASTING STAGE (new) --- */
+.dash-stage{
+  margin-top: 14px;
+  display:flex;
+  justify-content:space-between;
+  gap: 14px;
+  padding: 12px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+}
+
+.dash-stage-label{
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.dash-stage-value{
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.dash-milestones{
+  margin-top: 10px;
+  display:flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.milestone{
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-dim);
+}
+
+.milestone.done{
+  color: var(--accent-blue);
+  border-color: rgba(0,210,255,0.28);
+  background: rgba(0,210,255,0.08);
+}
+
+.milestone.active{
+  color: white;
+  border-color: rgba(255,255,255,0.22);
+  background: rgba(157,80,187,0.16);
+}
+
         .assistant-bubble {
             position: fixed;
             right: 16px;
@@ -291,3 +343,97 @@
 
         #assistant-overlay #chat-container { flex: 1; overflow-y: auto; padding-bottom: 140px; }
         #assistant-overlay .controls-wrapper { position: sticky; bottom: 0; left: auto; right: auto; background: #0c0e12; }
+
+        /* =========================
+   Bottom Tab Bar (Glass)
+   ========================= */
+
+:root{
+  --bottom-nav-h: 74px;
+}
+
+.bottom-nav{
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  height: var(--bottom-nav-h);
+
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 12px;
+  border-radius: 22px;
+
+  background: rgba(15, 20, 28, 0.55);
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(18px);
+
+  box-shadow: 0 18px 80px rgba(0,0,0,0.55);
+  z-index: 650;
+}
+
+.bottom-nav .tab{
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 18px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+
+  font-size: 20px; /* emoji size */
+  cursor: pointer;
+  user-select: none;
+}
+
+.bottom-nav .tab span{
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  line-height: 1;
+}
+
+.bottom-nav .tab.active{
+  color: var(--text-main);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 0 0 6px rgba(0,210,255,0.05);
+}
+
+/* Keep main screens from hiding under the tab bar */
+.dashboard{
+  padding-bottom: calc(var(--bottom-nav-h) + 28px);
+}
+
+/* Lift assistant bubble above the tab bar */
+.assistant-bubble{
+  bottom: calc(var(--bottom-nav-h) + 18px + env(safe-area-inset-bottom));
+}
+
+.milestone {
+  opacity: 0.55;
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.milestone.reached {
+  opacity: 1;
+  border-color: rgba(0,210,255,0.35);
+  background: rgba(0,210,255,0.10);
+}
+
+.milestone.current {
+  opacity: 1;
+  border-color: rgba(157,80,187,0.45);
+  background: rgba(157,80,187,0.12);
+}
