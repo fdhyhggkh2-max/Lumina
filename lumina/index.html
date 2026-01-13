@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <link rel="stylesheet" href="./assets/css/styles.css">
+   <!-- ===== PWA HEAD START ===== -->
+   <meta name="theme-color" content="#05070a">
+   <link rel="manifest" href="./manifest.webmanifest">
+   <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+   <!-- ===== PWA HEAD END ===== -->
+</head>
+<body>
+
+   <!-- SCREENS -->
+<main id="dashboard" class="dashboard" data-screen="dashboard">
+  <!-- RED FLAG: DASHBOARD OVERVIEW START -->
+  <div class="dash-card" id="dash-fasting-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Today Overview</div>
+      <div class="dash-streak" id="dash-streak">🔥 Streak: 0</div>
+    </div>
+
+    <div class="dash-timer-row">
+      <div class="dash-big" id="dash-main">Not fasting</div>
+      <div class="dash-sub" id="dash-sub">Tap the spark to open Lumina</div>
+    </div>
+
+    <div class="dash-stage">
+      <div class="dash-stage-left">
+        <div class="dash-stage-label">Stage</div>
+        <div class="dash-stage-value" id="dash-stage">—</div>
+      </div>
+      <div class="dash-stage-right">
+        <div class="dash-stage-label">Next</div>
+        <div class="dash-stage-value" id="dash-next">—</div>
+      </div>
+    </div>
+
+    <div class="dash-milestones" id="dash-milestones">
+      <div class="milestone" data-ms="0">0h</div>
+      <div class="milestone" data-ms="12">12h</div>
+      <div class="milestone" data-ms="16">16h</div>
+      <div class="milestone" data-ms="24">24h</div>
+    </div>
+
+    <div class="dash-bar-bg">
+      <div class="dash-bar-fill" id="dash-bar"></div>
+    </div>
+
+    <div class="dash-meta" id="dash-meta">—</div>
+
+    <div class="overview-goals">
+      <button class="overview-goal" type="button" data-goal="rap" id="goal-rap">
+        <span>Rap</span>
+        <span class="overview-goal-state" id="goal-rap-state">Not done</span>
+      </button>
+      <button class="overview-goal" type="button" data-goal="exercise" id="goal-exercise">
+        <span>Exercise</span>
+        <span class="overview-goal-state" id="goal-exercise-state">Not done</span>
+      </button>
+      <button class="overview-goal" type="button" data-goal="fasting" id="goal-fasting">
+        <span>Fasting</span>
+        <span class="overview-goal-state" id="goal-fasting-state">Not done</span>
+      </button>
+    </div>
+  </div>
+  <!-- RED FLAG: DASHBOARD OVERVIEW END -->
+
+  <!-- RED FLAG: DAILY MISSIONS START -->
+  <div class="dash-card" id="missions-card"></div>
+  <!-- RED FLAG: DAILY MISSIONS END -->
+
+  <!-- RED FLAG: PROGRESS CALENDAR START -->
+  <div class="dash-card" id="calendar-card"></div>
+  <!-- RED FLAG: PROGRESS CALENDAR END -->
+
+  <!-- RED FLAG: ENERGY RECOVERY START -->
+  <div class="dash-card" id="energy-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Energy Recovery</div>
+      <div class="dash-streak" id="energy-score">Score: —</div>
+    </div>
+
+    <div class="dash-timer-row">
+      <div class="dash-big">Today</div>
+      <div class="dash-sub" id="energy-hint">Balance sleep, hydration, and recovery.</div>
+    </div>
+
+    <div class="energy-metric">
+      <div class="energy-metric-top">
+        <span>Sleep proxy</span>
+        <span id="energy-sleep">—</span>
+      </div>
+      <div class="energy-bar-bg">
+        <div class="energy-bar-fill" id="energy-sleep-fill"></div>
+      </div>
+    </div>
+
+    <div class="energy-metric">
+      <div class="energy-metric-top">
+        <span>Hydration (1-5)</span>
+        <span id="energy-hydration">3</span>
+      </div>
+      <input id="energy-hydration-input" type="range" min="1" max="5" step="1" value="3">
+    </div>
+
+    <div class="energy-metric">
+      <div class="energy-metric-top">
+        <span>Recovery score</span>
+        <span id="energy-recovery">—</span>
+      </div>
+      <div class="energy-bar-bg">
+        <div class="energy-bar-fill" id="energy-recovery-fill"></div>
+      </div>
+    </div>
+
+    <div class="dash-meta">Not medical advice.</div>
+  </div>
+  <!-- RED FLAG: ENERGY RECOVERY END -->
+
+</main>
+
+<!-- RED FLAG: FASTING TAB START -->
+<main id="screen-fasting" class="dashboard hidden" data-screen="fasting">
+  <div class="dash-card fasting-active-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Active Fast</div>
+      <div class="dash-streak" id="fasting-status-pill">⏳ Not fasting</div>
+    </div>
+
+    <!-- ===== FASTING STAGE EXPLORER UI START ===== -->
+    <div class="stage-explorer">
+      <div class="stage-top">
+        <div>
+          <div class="stage-kicker">Stage Explorer</div>
+          <div class="stage-title" id="fx-title">—</div>
+          <div class="stage-body" id="fx-body">—</div>
+        </div>
+        <button class="mini-btn" type="button" onclick="openStageModal()">Learn more</button>
+      </div>
+
+      <div class="stage-milestones" id="fx-milestones">
+        <button class="ms-btn" data-h="0" type="button">0h</button>
+        <button class="ms-btn" data-h="12" type="button">12h</button>
+        <button class="ms-btn" data-h="16" type="button">16h</button>
+        <button class="ms-btn" data-h="24" type="button">24h</button>
+      </div>
+
+      <div class="stage-benefits" id="fx-benefits"></div>
+    </div>
+    <!-- ===== FASTING STAGE EXPLORER UI END ===== -->
+
+    <div class="dash-timer-row">
+      <div class="dash-big" id="fasting-main">Not fasting</div>
+      <div class="dash-sub" id="fasting-sub">Start a fast to see progress + stages.</div>
+    </div>
+
+    <div class="fasting-meta-row">
+      <div>
+        <div class="fasting-label">Start</div>
+        <div class="fasting-value" id="fasting-start-label">—</div>
+      </div>
+      <div>
+        <div class="fasting-label">Goal</div>
+        <div class="fasting-value" id="fasting-goal-label">—</div>
+      </div>
+    </div>
+
+    <div class="dash-stage">
+      <div class="dash-stage-left">
+        <div class="dash-stage-label">Stage</div>
+        <div class="dash-stage-value" id="fasting-stage">—</div>
+      </div>
+      <div class="dash-stage-right">
+        <div class="dash-stage-label">Next</div>
+        <div class="dash-stage-value" id="fasting-next">—</div>
+      </div>
+    </div>
+
+    <div class="dash-milestones" id="fasting-milestones">
+      <div class="milestone" data-ms="0">0h</div>
+      <div class="milestone" data-ms="12">12h</div>
+      <div class="milestone" data-ms="16">16h</div>
+      <div class="milestone" data-ms="24">24h</div>
+    </div>
+
+    <div class="dash-bar-bg">
+      <div class="dash-bar-fill" id="fasting-bar"></div>
+    </div>
+
+    <div class="dash-meta" id="fasting-meta">—</div>
+
+    <div class="fasting-actions">
+      <button class="pill" type="button" id="fasting-start-btn">Start Fast</button>
+      <button class="pill" type="button" id="fasting-end-btn">End Fast</button>
+      <button class="pill" type="button" id="fasting-edit-btn">Edit Goal</button>
+    </div>
+  </div>
+
+  <div class="dash-card fasting-log-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Log & Notes</div>
+      <div class="dash-streak">📝</div>
+    </div>
+    <div class="fasting-log-grid">
+      <button class="pill" type="button" id="fasting-log-meal-btn">🥗 Log meal</button>
+      <div class="fasting-field">
+        <label for="fasting-note">Fast note</label>
+        <input id="fasting-note" type="text" placeholder="How are you feeling?">
+      </div>
+      <div class="fasting-field">
+        <label for="fasting-hunger">Hunger (1-5)</label>
+        <input id="fasting-hunger" type="range" min="1" max="5" step="1">
+      </div>
+      <div class="fasting-field">
+        <label for="fasting-energy">Energy (1-5)</label>
+        <input id="fasting-energy" type="range" min="1" max="5" step="1">
+      </div>
+    </div>
+  </div>
+
+  <div class="dash-card fasting-history-card">
+    <div class="dash-title-row">
+      <div class="dash-title">History</div>
+      <div class="dash-streak">📚</div>
+    </div>
+    <div class="fasting-history-list" id="fasting-history-list"></div>
+    <button class="pill" type="button" onclick="exportData()">Export JSON</button>
+  </div>
+</main>
+<!-- RED FLAG: FASTING TAB END -->
+
+<!-- ===== RAP STUDIO START ===== -->
+<main id="screen-coach" class="dashboard hidden" data-screen="coach">
+  <div class="dash-card rap-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Rap Studio</div>
+      <div class="dash-streak">🎤</div>
+    </div>
+
+    <div class="rap-form">
+      <div class="rap-field">
+        <label for="rap-mode">Mode</label>
+        <select id="rap-mode">
+          <option value="Warmup">Warmup</option>
+          <option value="Storytelling">Storytelling</option>
+          <option value="Punchlines">Punchlines</option>
+          <option value="Freestyle">Freestyle</option>
+          <option value="Hook">Hook</option>
+        </select>
+      </div>
+      <div class="rap-field">
+        <label for="rap-topic">Topic</label>
+        <input id="rap-topic" type="text" placeholder="Eg. ambition, city nights">
+      </div>
+      <div class="rap-field">
+        <label for="rap-vibe">Mood/Vibe (optional)</label>
+        <input id="rap-vibe" type="text" placeholder="Eg. gritty, hopeful">
+      </div>
+      <button class="rap-button" type="button" id="rap-generate">Generate prompts</button>
+      <div class="rap-prompts" id="rap-prompts"></div>
+
+      <div class="rap-field">
+        <label for="rap-draft">Draft</label>
+        <textarea id="rap-draft" rows="6" placeholder="Write your bars here…"></textarea>
+      </div>
+
+      <div class="rap-actions">
+        <button class="rap-button" type="button" id="rap-save">Save draft</button>
+        <button class="rap-button secondary" type="button" id="rap-new">New draft</button>
+        <button class="rap-button secondary" type="button" id="rap-export">Export drafts (JSON)</button>
+      </div>
+
+      <div class="rap-list" id="rap-drafts-list"></div>
+    </div>
+  </div>
+</main>
+<!-- ===== RAP STUDIO END ===== -->
+
+<main id="screen-exercise" class="dashboard hidden" data-screen="exercise">
+  <div class="dash-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Exercise</div>
+      <div class="dash-streak">💪</div>
+    </div>
+    <div class="dash-timer-row">
+      <div class="dash-big">Coming soon</div>
+      <div class="dash-sub">We’ll add workouts + tracking here.</div>
+    </div>
+    <div class="dash-meta">—</div>
+  </div>
+</main>
+
+<main id="screen-profile" class="dashboard hidden" data-screen="profile">
+  <div class="dash-card">
+    <div class="dash-title-row">
+      <div class="dash-title">Profile</div>
+      <div class="dash-streak">⚙️</div>
+    </div>
+    <div class="dash-timer-row">
+      <div class="dash-big">Coming soon</div>
+      <div class="dash-sub">Settings + goals will live here.</div>
+    </div>
+    <div class="dash-meta">—</div>
+  </div>
+</main>
+
+
+
+<!-- BOTTOM TAB BAR (single source of truth) -->
+<nav id="bottom-nav" class="bottom-nav" aria-label="Main tabs">
+  <button class="tab active" data-tab="dashboard" type="button">🏠<span>Home</span></button>
+  <button class="tab" data-tab="fasting" type="button">⏳<span>Fasting</span></button>
+  <button class="tab" data-tab="coach" type="button">🎤<span>Coach</span></button>
+  <button class="tab" data-tab="exercise" type="button">💪<span>Exercise</span></button>
+  <button class="tab" data-tab="profile" type="button">⚙️<span>Profile</span></button>
+</nav>
+
+    <!-- ASSISTANT BUBBLE -->
+    <button id="assistant-bubble" class="assistant-bubble" aria-label="Open assistant" onclick="openAssistant()">
+        ✦
+    </button>
+
+    <!-- ASSISTANT OVERLAY -->
+    <div id="assistant-overlay" class="assistant-overlay hidden" onclick="overlayClickClose(event)">
+        <div class="assistant-sheet" role="dialog" aria-modal="true" aria-label="Lumina Assistant">
+            <div class="assistant-topbar">
+                <div class="assistant-topbar-title">Lumina</div>
+                <button class="assistant-close" onclick="closeAssistant()" aria-label="Close assistant">×</button>
+            </div>
+
+            <div class="assistant-shell">
+                <header>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1 style="font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px;">LUMINA <span style="color:var(--accent-blue); font-size: 0.7rem; vertical-align: middle;">V1</span></h1>
+                        <div style="display: flex; gap: 10px;">
+                            <button onclick="toggleModal('settings-modal')" class="btn-ghost">Settings</button>
+                        </div>
+                    </div>
+                    <div class="state-chips">
+                        <div id="chip-status" class="chip active">● Offline</div>
+                        <div id="chip-elapsed" class="chip">0h 0m elapsed</div>
+                        <div id="chip-streak" class="chip">🔥 Streak: 0</div>
+                        <div id="chip-hunger" class="chip">Hunger: --</div>
+                        <div id="chip-energy" class="chip">Energy: --</div>
+                    </div>
+                </header>
+
+                <div id="timer-ui" class="timer-container hidden">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <div id="status-text" style="font-size: 0.75rem; color: var(--accent-blue); font-weight: 600; text-transform: uppercase;">Fasting Active</div>
+                            <div id="main-timer-display" style="font-size: 1.8rem; font-weight: 800; margin-top: 2px;">00:00:00</div>
+                        </div>
+                        <div id="badge-display" style="font-size: 0.7rem; background: rgba(0,210,255,0.1); padding: 4px 8px; border-radius: 8px; color: var(--accent-blue);">Pre-Ketosis</div>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div id="progress-fill" class="progress-bar-fill"></div>
+                    </div>
+                    <div class="timer-stats">
+                        <span id="start-time-label">Started: --:--</span>
+                        <span id="end-time-label">Goal: --:--</span>
+                    </div>
+                </div>
+
+                <div id="chat-container"></div>
+
+                <div class="controls-wrapper">
+                    <div class="quick-actions">
+                        <div class="pill" onclick="handleAction('hunger')">😫 I'm hungry</div>
+                        <div id="pill-fast-toggle" class="pill" onclick="handleAction('fast-menu')">⚡ Start Fast</div>
+                        <div class="pill" onclick="handleAction('meal-menu')">🥗 Log Meal</div>
+                        <div class="pill" onclick="handleAction('stats')">📊 Stats</div>
+                    </div>
+                    <div class="input-bar">
+                        <input type="text" id="chat-input" placeholder="Ask Lumina..." onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <button id="btn-voice" class="btn-mic" onclick="toggleVoiceCapture()" title="Voice mode">🎙</button>
+                        <button class="btn-send" onclick="sendMessage()">→</button>
+                    </div>
+                    <div class="disclaimer">Not medical advice. Consult a physician before fasting.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="fast-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 0.5rem;">Plan Fast</h3>
+            <div class="form-group">
+                <label>Target Duration (Hours)</label>
+                <select id="fast-duration">
+                    <option value="12">12 Hours (Circadian)</option>
+                    <option value="16" selected>16 Hours (Leangains)</option>
+                    <option value="18">18 Hours (4:2)</option>
+                    <option value="20">20 Hours (Warrior)</option>
+                    <option value="24">24 Hours (OMAD)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Start Time</label>
+                <input type="datetime-local" id="fast-start">
+            </div>
+            <div class="form-group">
+                <label>Last Meal Note (Optional)</label>
+                <input type="text" id="fast-note" placeholder="What did you last eat?">
+            </div>
+            <button class="btn-primary" onclick="startFast()">Activate Fast</button>
+            <button class="btn-ghost" onclick="toggleModal('fast-modal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="meal-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Log Meal</h3>
+            <div class="form-group">
+                <label>What did you eat?</label>
+                <input type="text" id="meal-text" placeholder="e.g. Avocado Toast, 2 eggs">
+            </div>
+            <div class="form-group">
+                <label>Time</label>
+                <input type="datetime-local" id="meal-time">
+            </div>
+            <div class="form-group">
+                <label>Hunger before (1-5)</label>
+                <input type="range" id="meal-hunger" min="1" max="5" value="3" oninput="this.nextElementSibling.innerText = this.value">
+                <span style="font-size:0.8rem; color:var(--accent-blue); text-align:center;">3</span>
+            </div>
+            <button class="btn-primary" onclick="saveMeal()">Log Meal</button>
+            <button class="btn-ghost" onclick="toggleModal('meal-modal')">Cancel</button>
+        </div>
+    </div>
+
+    <!-- RED FLAG: EXERCISE MODAL START -->
+    <div id="exercise-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Log Exercise</h3>
+            <div class="form-group">
+                <label>Workout</label>
+                <input type="text" id="exercise-type" placeholder="e.g. Strength, Run">
+            </div>
+            <div class="form-group">
+                <label>Minutes</label>
+                <input type="number" id="exercise-minutes" min="5" step="5" value="30">
+            </div>
+            <div class="form-group">
+                <label>Note</label>
+                <input type="text" id="exercise-note" placeholder="Optional note">
+            </div>
+            <div class="form-group">
+                <label>Date/Time</label>
+                <input type="datetime-local" id="exercise-time">
+            </div>
+            <button class="btn-primary" onclick="saveExercise()">Save Exercise</button>
+            <button class="btn-ghost" onclick="toggleModal('exercise-modal')">Cancel</button>
+        </div>
+    </div>
+    <!-- RED FLAG: EXERCISE MODAL END -->
+
+    <!-- RED FLAG: CALENDAR SHEET START -->
+    <div id="calendar-sheet" class="modal-overlay hidden">
+        <div class="modal-content calendar-sheet">
+            <div class="calendar-sheet-header">
+                <h3 id="calendar-sheet-date">Date</h3>
+                <button class="assistant-close" onclick="closeDaySheet()" aria-label="Close day details">×</button>
+            </div>
+            <div class="calendar-sheet-body">
+                <div class="calendar-section">
+                    <div class="calendar-section-title">Fasting</div>
+                    <div id="calendar-fast-list"></div>
+                </div>
+                <div class="calendar-section">
+                    <div class="calendar-section-title">Meals</div>
+                    <div id="calendar-meal-list"></div>
+                </div>
+                <div class="calendar-section">
+                    <div class="calendar-section-title">Exercise</div>
+                    <div id="calendar-ex-list"></div>
+                </div>
+            </div>
+            <div class="calendar-sheet-actions">
+                <button class="pill" type="button" onclick="toggleModal('meal-modal')">Log meal</button>
+                <button class="pill" type="button" onclick="openExerciseModal()">Log exercise</button>
+                <button class="pill" type="button" id="calendar-fast-toggle">Start/End fast</button>
+            </div>
+        </div>
+    </div>
+    <!-- RED FLAG: CALENDAR SHEET END -->
+
+    <div id="settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>System Controls</h3>
+            <button class="btn-ghost" onclick="exportData()">Export JSON Data</button>
+            <button class="btn-ghost" onclick="triggerImport()">Import JSON Data</button>
+            <input type="file" id="import-input" accept=".json" style="display:none;" onchange="importData(event)">
+            <button class="btn-ghost" style="color: #ff4444;" onclick="resetDay()">Reset Today's Data</button>
+            <button class="btn-primary" onclick="toggleModal('settings-modal')">Close</button>
+        </div>
+    </div>
+
+    <!-- ===== TIMELINE MODAL START ===== -->
+    <div id="timeline-modal" class="modal-overlay" style="display:none; z-index: 470;" onclick="if(event.target.id==='timeline-modal'){TimelineUI.closeTimeline();}">
+      <div class="modal-content">
+        <div id="timeline-modal-body"></div>
+        <button class="btn-primary" type="button" onclick="TimelineUI.closeTimeline()">Close</button>
+      </div>
+    </div>
+    <!-- ===== TIMELINE MODAL END ===== -->
+
+    <!-- ===== CALENDAR MODAL START ===== -->
+    <div id="calendar-modal" class="modal-overlay" style="display:none; z-index: 460;" onclick="if(event.target.id==='calendar-modal'){CalendarUI.closeDayModal();}">
+      <div class="modal-content">
+        <div id="calendar-modal-body"></div>
+        <button class="btn-primary" type="button" onclick="CalendarUI.closeDayModal()">Close</button>
+      </div>
+    </div>
+    <!-- ===== CALENDAR MODAL END ===== -->
+
+    <!-- ===== STAGE MODAL START ===== -->
+    <div id="stage-modal" class="modal-overlay" style="display:none; z-index: 460;" onclick="if(event.target.id==='stage-modal'){closeStageModal();}">
+      <div class="modal-content">
+        <div id="stage-modal-body"></div>
+        <button class="btn-primary" type="button" onclick="closeStageModal()">Close</button>
+      </div>
+    </div>
+    <!-- ===== STAGE MODAL END ===== -->
+    
+   <!-- SCRIPTS -->
+<script src="assets/js/fastingStages.js"></script>
+<script src="assets/js/missions.js"></script>
+<script src="assets/js/calendar.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/timeline.js"></script>
+<script src="assets/js/coach.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
