@@ -1,6 +1,14 @@
 const STATE_VERSION = 2;
         const APP_KEY = 'lumina_v1_data';
 
+        // ===== PWA REGISTER START =====
+        if ("serviceWorker" in navigator) {
+          window.addEventListener("load", () => {
+            navigator.serviceWorker.register("./sw.js").catch(()=>{});
+          });
+        }
+        // ===== PWA REGISTER END =====
+
         const STRINGS = {
             HELP: { en: "How can I help you? Try: 'start fast 16', 'log meal: salad', or update your profile ('strictness 4', 'avoid sugar').", es: "¿Cómo puedo ayudarte? Prueba: 'empezar ayuno 16', 'comida: ensalada', o actualiza tu perfil ('severo 4', 'evitar azucar')." },
             STATUS_FASTING: { en: "You are currently fasting. Stay focused!", es: "Estás en medio de un ayuno. ¡Sigue así!" },
@@ -25,6 +33,8 @@ const STATE_VERSION = 2;
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
+        // RED FLAG: COACH STATE START
+        // RED FLAG: STATE DEFAULTS START
         function getDefaultStateV2() {
             return {
                 meta: { version: STATE_VERSION, updatedAt: Date.now() },
@@ -33,11 +43,27 @@ const STATE_VERSION = 2;
                     wakeTime: "", sleepTime: "", avoidFoods: [], favoriteFoods: [], notes: "",
                     voiceReplies: false
                 },
-                today: { fasting: { active: false, start: null, duration: 16, note: "" }, meals: [], hunger: 3, energy: 3 },
-                history: { fastingSessions: [], mealLogs: [], hungerEpisodes: [] },
+                today: { 
+                    fasting: { active: false, start: null, duration: 16, note: "" }, 
+                    meals: [], 
+                    hunger: 3, 
+                    energy: 3,
+                    checklist: { rap: false, exercise: false, fasting: false },
+                    hydration: 3,
+                    exerciseLogs: []
+                },
+                history: { fastingSessions: [], mealLogs: [], hungerEpisodes: [], exerciseLogs: [] },
+                coach: {
+                    meta: { version: 1, updatedAt: Date.now() },
+                    focusHistory: { rap: [], exercise: [], fasting: [] },
+                    rapDrafts: [],
+                    rapLastPrompts: [],
+                    exerciseLogs: []
+                },
                 chat: [{ role: 'assistant', content: "Hello, I'm Lumina. How are you feeling right now?", ts: Date.now() }]
             };
         }
+        // RED FLAG: STATE DEFAULTS END
 
         let state = getDefaultStateV2();
         let recognition = null;
@@ -51,7 +77,7 @@ function showScreen(screenName) {
 
   // Fallback: if your HTML doesn't have data-screen yet, use IDs
   if (!screens || screens.length === 0) {
-    const ids = ['dashboard', 'coach', 'exercise', 'profile'];
+    const ids = ['dashboard', 'fasting', 'coach', 'exercise', 'profile'];
     screens = ids
       .map(id => document.getElementById(id))
       .filter(Boolean);
@@ -87,11 +113,15 @@ function initBottomNav() {
   // Restore last tab (default dashboard)
   let saved = null;
   try { saved = localStorage.getItem('lumina_active_tab'); } catch(e) {}
+  if (saved && !document.querySelector(`.bottom-nav .tab[data-tab="${saved}"]`)) {
+    saved = null;
+  }
   showScreen(saved || 'dashboard');
 }
 
 // Call this inside window.onload after loadState()
 
+        // RED FLAG: STATE NORMALIZE START
         function normalizeState(saved) {
             const base = getDefaultStateV2();
             if (!saved) return base;
@@ -101,26 +131,45 @@ function initBottomNav() {
             merged.today = { ...base.today, ...saved.today };
             merged.today.fasting = { ...base.today.fasting, ...(saved.today ? saved.today.fasting : {}) };
             merged.history = { ...base.history, ...saved.history };
+            merged.coach = { ...base.coach, ...(saved.coach || {}) };
 
             merged.chat = Array.isArray(saved.chat) ? saved.chat : base.chat;
             merged.today.meals = Array.isArray(merged.today.meals) ? merged.today.meals : [];
             merged.history.fastingSessions = Array.isArray(merged.history.fastingSessions) ? merged.history.fastingSessions : [];
             merged.history.mealLogs = Array.isArray(merged.history.mealLogs) ? merged.history.mealLogs : [];
             merged.history.hungerEpisodes = Array.isArray(merged.history.hungerEpisodes) ? merged.history.hungerEpisodes : [];
+            merged.history.exerciseLogs = Array.isArray(merged.history.exerciseLogs) ? merged.history.exerciseLogs : [];
             merged.profile.avoidFoods = Array.isArray(merged.profile.avoidFoods) ? merged.profile.avoidFoods : [];
             merged.profile.favoriteFoods = Array.isArray(merged.profile.favoriteFoods) ? merged.profile.favoriteFoods : [];
+            merged.coach.focusHistory = merged.coach.focusHistory || { rap: [], exercise: [], fasting: [] };
+            merged.coach.focusHistory.rap = Array.isArray(merged.coach.focusHistory.rap) ? merged.coach.focusHistory.rap : [];
+            merged.coach.focusHistory.exercise = Array.isArray(merged.coach.focusHistory.exercise) ? merged.coach.focusHistory.exercise : [];
+            merged.coach.focusHistory.fasting = Array.isArray(merged.coach.focusHistory.fasting) ? merged.coach.focusHistory.fasting : [];
+            merged.coach.rapDrafts = Array.isArray(merged.coach.rapDrafts) ? merged.coach.rapDrafts : [];
+            merged.coach.rapLastPrompts = Array.isArray(merged.coach.rapLastPrompts) ? merged.coach.rapLastPrompts : [];
+            merged.coach.exerciseLogs = Array.isArray(merged.coach.exerciseLogs) ? merged.coach.exerciseLogs : [];
+            merged.today.checklist = merged.today.checklist || { rap: false, exercise: false, fasting: false };
+            merged.today.exerciseLogs = Array.isArray(merged.today.exerciseLogs) ? merged.today.exerciseLogs : [];
 
             merged.today.hunger = Number(merged.today.hunger) || 3;
             merged.today.energy = Number(merged.today.energy) || 3;
+            merged.today.hydration = Number(merged.today.hydration) || 3;
             merged.profile.strictness = Number(merged.profile.strictness) || 3;
+            // ===== DAILY MISSIONS INTEGRATION START =====
+            if (window.Missions) window.Missions.ensureMissionsState(merged);
+            // ===== DAILY MISSIONS INTEGRATION END =====
 
             return merged;
         }
+        // RED FLAG: STATE NORMALIZE END
 
         function loadState() {
             try {
                 const savedRaw = localStorage.getItem(APP_KEY);
                 state = normalizeState(savedRaw ? JSON.parse(savedRaw) : null);
+                // ===== DAILY MISSIONS INTEGRATION START =====
+                if (window.Missions) window.Missions.autoResetIfNewDay(state);
+                // ===== DAILY MISSIONS INTEGRATION END =====
                 updateDerivedStats();
                 renderChat();
             } catch (e) { state = getDefaultStateV2(); }
@@ -199,6 +248,7 @@ function initBottomNav() {
 
         function toggleModal(id) {
             const m = document.getElementById(id);
+            if (!m) return;
             const isOpen = m.style.display === 'flex';
             m.style.display = isOpen ? 'none' : 'flex';
             
@@ -389,17 +439,45 @@ function initBottomNav() {
         }
 
         function startFast(hoursOverride = null) {
-            const start = hoursOverride ? new Date().toISOString() : document.getElementById('fast-start').value;
+            const startInput = document.getElementById('fast-start');
+            const start = hoursOverride ? new Date().toISOString() : (startInput ? startInput.value : "");
             const dur = hoursOverride || parseInt(document.getElementById('fast-duration').value);
-            state.today.fasting = { active: true, start: new Date(start).getTime(), duration: dur, note: "" };
+            const noteInput = document.getElementById('fast-note');
+            const note = noteInput ? noteInput.value.trim() : "";
+            if (fastEditMode && !hoursOverride && state.today.fasting.active) {
+                state.today.fasting.duration = dur;
+                if (note) state.today.fasting.note = note;
+                fastEditMode = false;
+                toggleModal('fast-modal');
+                saveState(); updateUI();
+                snapshotNow("fast_edit");
+                if (window.UI) UI.toast("Fast goal updated", "info", 2000);
+                return;
+            }
+            if (!start) {
+                const fallback = new Date().toISOString();
+                if (startInput) startInput.value = fallback.slice(0, 16);
+                state.today.fasting = { active: true, start: new Date(fallback).getTime(), duration: dur, note: "" };
+                if (!hoursOverride) toggleModal('fast-modal');
+                saveState(); updateUI();
+                snapshotNow("fast_start");
+                if (window.UI) UI.toast("Fast started", "success", 2000);
+                return;
+            }
+            state.today.fasting = { active: true, start: new Date(start).getTime(), duration: dur, note: note || "" };
             if (!hoursOverride) toggleModal('fast-modal');
+            fastEditMode = false;
             saveState(); updateUI();
+            snapshotNow("fast_start");
+            if (window.UI) UI.toast("Fast started", "success", 2000);
         }
 
         function endFast() {
             state.history.fastingSessions.push({ ...state.today.fasting, end: Date.now() });
             state.today.fasting.active = false;
             saveState(); updateUI();
+            snapshotNow("fast_end");
+            if (window.UI) UI.toast("Fast ended", "info", 2000);
         }
 
         function saveMeal(textOverride = null) {
@@ -433,6 +511,8 @@ function initBottomNav() {
                 toggleModal('meal-modal');
             }
             saveState(); updateUI();
+            snapshotNow("meal");
+            if (window.UI) UI.toast("Meal logged", "success", 2000);
         }
 
         function handleAction(action) {
@@ -464,20 +544,213 @@ function initBottomNav() {
                 f.active ? statusChip.classList.add('active') : statusChip.classList.remove('active');
             }
             
-            document.getElementById('chip-hunger').innerText = `Hunger: ${state.today.hunger}`;
-            document.getElementById('chip-energy').innerText = `Energy: ${state.today.energy}`;
+            const chipHunger = document.getElementById('chip-hunger');
+            const chipEnergy = document.getElementById('chip-energy');
+            if (chipHunger) chipHunger.innerText = `Hunger: ${state.today.hunger}`;
+            if (chipEnergy) chipEnergy.innerText = `Energy: ${state.today.energy}`;
             updateDerivedStats();
             updateDashboardCard();
             updateFastingScreen();
+            // ===== DAILY MISSIONS INTEGRATION START =====
+            if (window.Missions) {
+                window.Missions.renderMissionsCard(state, () => {
+                    saveState();
+                    snapshotNow("missions", { silent: true });
+                });
+            }
+            // ===== DAILY MISSIONS INTEGRATION END =====
+            // ===== CALENDAR + FASTING EXPLORER INTEGRATION START =====
+            if (window.CalendarUI) window.CalendarUI.renderCalendar(state);
+            renderFastingStageExplorer();
+            // ===== CALENDAR + FASTING EXPLORER INTEGRATION END =====
+            // ===== PROFILE ACTIONS START =====
+            updateProfileActions();
+            // ===== PROFILE ACTIONS END =====
         }
 
-        // ===============================
-// FASTING TAB SCREEN (placeholder)
-// ===============================
-function updateFastingScreen() {
-  // Later we’ll build the full fasting control center here.
-  // For now this prevents the app from crashing.
+        // RED FLAG: FASTING SCREEN START
+let fastingControlsInit = false;
+let fastEditMode = false;
+
+function initFastingControls() {
+  if (fastingControlsInit) return;
+  const startBtn = document.getElementById("fasting-start-btn");
+  const endBtn = document.getElementById("fasting-end-btn");
+  const editBtn = document.getElementById("fasting-edit-btn");
+  const logMealBtn = document.getElementById("fasting-log-meal-btn");
+  const hungerInput = document.getElementById("fasting-hunger");
+  const energyInput = document.getElementById("fasting-energy");
+  const noteInput = document.getElementById("fasting-note");
+
+  if (startBtn) startBtn.addEventListener("click", () => toggleModal("fast-modal"));
+  if (endBtn) endBtn.addEventListener("click", () => confirm("End current fast?") && endFast());
+  if (editBtn) {
+    editBtn.addEventListener("click", () => {
+      if (!state.today.fasting.active) {
+        toggleModal("fast-modal");
+        return;
+      }
+      fastEditMode = true;
+      const durationEl = document.getElementById("fast-duration");
+      if (durationEl) durationEl.value = String(state.today.fasting.duration || 16);
+      toggleModal("fast-modal");
+    });
+  }
+  if (logMealBtn) logMealBtn.addEventListener("click", () => toggleModal("meal-modal"));
+
+  if (hungerInput) {
+    hungerInput.addEventListener("input", () => {
+      state.today.hunger = Number(hungerInput.value) || 3;
+      saveState();
+      updateUI();
+    });
+  }
+  if (energyInput) {
+    energyInput.addEventListener("input", () => {
+      state.today.energy = Number(energyInput.value) || 3;
+      saveState();
+      updateUI();
+    });
+  }
+  if (noteInput) {
+    noteInput.addEventListener("input", () => {
+      state.today.fasting.note = noteInput.value;
+      saveState();
+    });
+  }
+
+  fastingControlsInit = true;
 }
+
+function updateFastingScreen() {
+  initFastingControls();
+  const f = state.today.fasting;
+  const statusPill = document.getElementById("fasting-status-pill");
+  const main = document.getElementById("fasting-main");
+  const sub = document.getElementById("fasting-sub");
+  const stageEl = document.getElementById("fasting-stage");
+  const nextEl = document.getElementById("fasting-next");
+  const bar = document.getElementById("fasting-bar");
+  const meta = document.getElementById("fasting-meta");
+  const startLabel = document.getElementById("fasting-start-label");
+  const goalLabel = document.getElementById("fasting-goal-label");
+  const milestones = document.getElementById("fasting-milestones");
+  const hungerInput = document.getElementById("fasting-hunger");
+  const energyInput = document.getElementById("fasting-energy");
+  const noteInput = document.getElementById("fasting-note");
+
+  if (hungerInput) hungerInput.value = String(state.today.hunger || 3);
+  if (energyInput) energyInput.value = String(state.today.energy || 3);
+  if (noteInput) noteInput.value = state.today.fasting.note || "";
+
+  if (!main || !sub || !bar || !meta) return;
+
+  if (!f.active) {
+    if (statusPill) statusPill.innerText = "⏳ Not fasting";
+    main.innerText = "Not fasting";
+    sub.innerText = "Start a fast to see progress + stages.";
+    bar.style.width = "0%";
+    if (stageEl) stageEl.innerText = "—";
+    if (nextEl) nextEl.innerText = "—";
+    if (startLabel) startLabel.innerText = "—";
+    if (goalLabel) goalLabel.innerText = "—";
+    meta.innerText = "—";
+    setMilestonesUI(milestones, 0);
+    renderFastingHistory();
+    return;
+  }
+
+  const eMs = elapsedMs(f);
+  const elapsedHours = eMs / 3600000;
+  const targetMs = f.duration * 3600000;
+  const percent = Math.min(100, (eMs / targetMs) * 100);
+
+  if (statusPill) statusPill.innerText = "⏳ Fasting";
+  bar.style.width = percent + "%";
+  const h = Math.floor(eMs / 3600000);
+  const m = Math.floor((eMs % 3600000) / 60000);
+  main.innerText = `${h}h ${m}m elapsed`;
+  sub.innerText = `Remaining: ${formatHM(getRemainingMs(f))} • Goal ${f.duration}h`;
+  if (startLabel) startLabel.innerText = formatTime(f.start);
+  if (goalLabel) goalLabel.innerText = formatTime(f.start + targetMs);
+  meta.innerText = `Started ${formatTime(f.start)} • Goal ${formatTime(f.start + targetMs)}`;
+
+  const stageInfo = getStageInfo(elapsedHours);
+  if (stageEl) stageEl.innerText = stageInfo.stage;
+  if (nextEl) {
+    if (stageInfo.nextAt == null) nextEl.innerText = "Complete";
+    else {
+      const msToNext = Math.max(0, (stageInfo.nextAt * 3600000) - eMs);
+      nextEl.innerText = `${formatHM(msToNext)} → ${stageInfo.nextLabel}`;
+    }
+  }
+  setMilestonesUI(milestones, elapsedHours);
+  renderFastingHistory();
+}
+
+function renderFastingHistory() {
+  const list = document.getElementById("fasting-history-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const sessions = (state.history.fastingSessions || []).slice(-7).reverse();
+  if (!sessions.length) {
+    list.innerHTML = '<div class="fasting-history-item"><div class="fasting-history-title">No sessions yet</div></div>';
+    return;
+  }
+  sessions.forEach(session => {
+    const start = session.start ? new Date(session.start) : null;
+    const end = session.end ? new Date(session.end) : null;
+    const durationMs = end && start ? end.getTime() - start.getTime() : 0;
+    const hoursReached = durationMs / 3600000;
+    const stageReached = hoursReached >= 24 ? "24h" : hoursReached >= 16 ? "16h" : hoursReached >= 12 ? "12h" : `${Math.max(0, Math.floor(hoursReached))}h`;
+
+    const item = document.createElement("div");
+    item.className = "fasting-history-item";
+    const title = document.createElement("div");
+    title.className = "fasting-history-title";
+    title.innerText = start ? start.toDateString() : "Session";
+    const meta = document.createElement("div");
+    meta.className = "fasting-history-meta";
+    meta.innerText = `${formatHM(durationMs)} • Reached ${stageReached}`;
+    item.appendChild(title);
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
+}
+        // RED FLAG: FASTING SCREEN END
+
+// ===== PROFILE ACTIONS START =====
+function updateProfileActions() {
+  const profileScreen = document.getElementById("screen-profile");
+  if (!profileScreen) return;
+  const card = profileScreen.querySelector(".dash-card");
+  if (!card) return;
+  let actions = document.getElementById("profile-actions");
+  if (!actions) {
+    actions = document.createElement("div");
+    actions.id = "profile-actions";
+    actions.style.display = "flex";
+    actions.style.flexWrap = "wrap";
+    actions.style.gap = "10px";
+    actions.style.marginTop = "12px";
+    const installBtn = document.createElement("button");
+    installBtn.className = "pill";
+    installBtn.type = "button";
+    installBtn.innerText = "Install App";
+    installBtn.addEventListener("click", () => {
+      if (window.UI) UI.promptInstall();
+    });
+    const restoreBtn = document.createElement("button");
+    restoreBtn.className = "pill";
+    restoreBtn.type = "button";
+    restoreBtn.innerText = "Restore Last Backup";
+    restoreBtn.addEventListener("click", () => restoreSnapshot(0));
+    actions.appendChild(installBtn);
+    actions.appendChild(restoreBtn);
+    card.appendChild(actions);
+  }
+}
+// ===== PROFILE ACTIONS END =====
 
         // --- DASHBOARD FASTING STAGE (new) ---
 const DASH_MILESTONES_HOURS = [0, 12, 16, 24];
@@ -577,6 +850,467 @@ function resetDashboardStageUI() {
   if (next) next.classList.add("current");
 }
 
+// RED FLAG: DASHBOARD GOALS START
+let dashboardControlsInit = false;
+
+function initDashboardControls() {
+  if (dashboardControlsInit) return;
+  initOverviewGoals();
+  initEnergyControls();
+  dashboardControlsInit = true;
+}
+
+function initOverviewGoals() {
+  const buttons = document.querySelectorAll(".overview-goal");
+  if (!buttons.length) return;
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-goal");
+      if (!key || !state.today.checklist) return;
+      state.today.checklist[key] = !state.today.checklist[key];
+      saveState();
+      updateOverviewGoals();
+    });
+  });
+}
+
+function updateOverviewGoals() {
+  const checklist = state.today.checklist || { rap: false, exercise: false, fasting: false };
+  const goalMap = [
+    { key: "rap", btn: "goal-rap", label: "goal-rap-state" },
+    { key: "exercise", btn: "goal-exercise", label: "goal-exercise-state" },
+    { key: "fasting", btn: "goal-fasting", label: "goal-fasting-state" }
+  ];
+  goalMap.forEach(({ key, btn, label }) => {
+    const el = document.getElementById(btn);
+    const labelEl = document.getElementById(label);
+    if (!el || !labelEl) return;
+    const done = !!checklist[key];
+    el.classList.toggle("done", done);
+    labelEl.innerText = done ? "Done" : "Not done";
+  });
+}
+// RED FLAG: DASHBOARD GOALS END
+
+// RED FLAG: ENERGY CARD START
+function updateEnergyCard() {
+  const hydrationEl = document.getElementById("energy-hydration");
+  const hydrationInput = document.getElementById("energy-hydration-input");
+  const sleepEl = document.getElementById("energy-sleep");
+  const sleepFill = document.getElementById("energy-sleep-fill");
+  const recoveryEl = document.getElementById("energy-recovery");
+  const recoveryFill = document.getElementById("energy-recovery-fill");
+  const scoreEl = document.getElementById("energy-score");
+
+  if (!hydrationEl || !hydrationInput || !recoveryEl || !recoveryFill || !scoreEl) return;
+  const hydration = Number(state.today.hydration) || 3;
+  hydrationInput.value = String(hydration);
+  hydrationEl.innerText = String(hydration);
+
+  if (sleepEl && sleepFill) {
+    sleepEl.innerText = "—";
+    sleepFill.style.width = "0%";
+  }
+
+  const hydrationScore = hydration / 5;
+  const fastingScore = state.today.fasting.active ? Math.min(1, elapsedMs(state.today.fasting) / (state.today.fasting.duration * 3600000)) : 0.4;
+  const scores = [hydrationScore, fastingScore];
+  const recovery = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100);
+
+  recoveryEl.innerText = `${recovery}%`;
+  recoveryFill.style.width = `${recovery}%`;
+  scoreEl.innerText = `Score: ${recovery}%`;
+}
+
+function initEnergyControls() {
+  const hydrationInput = document.getElementById("energy-hydration-input");
+  if (!hydrationInput) return;
+  hydrationInput.addEventListener("input", () => {
+    state.today.hydration = Number(hydrationInput.value) || 3;
+    saveState();
+    updateEnergyCard();
+  });
+}
+// RED FLAG: ENERGY CARD END
+
+// RED FLAG: CALENDAR START
+let calendarView = { year: new Date().getFullYear(), month: new Date().getMonth() };
+let calendarSelectedDateKey = null;
+
+function buildMonth(year, month) {
+  const first = new Date(year, month, 1);
+  const startDay = first.getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrev = new Date(year, month, 0).getDate();
+  const cells = [];
+
+  for (let i = startDay - 1; i >= 0; i -= 1) {
+    const day = daysInPrev - i;
+    const date = new Date(year, month - 1, day);
+    cells.push({ date, inMonth: false });
+  }
+
+  for (let d = 1; d <= daysInMonth; d += 1) {
+    const date = new Date(year, month, d);
+    cells.push({ date, inMonth: true });
+  }
+
+  while (cells.length % 7 !== 0) {
+    const next = new Date(year, month + 1, cells.length - (startDay + daysInMonth) + 1);
+    cells.push({ date: next, inMonth: false });
+  }
+
+  return cells;
+}
+
+function collectEventsForDate(dateKey) {
+  const fasting = [];
+  const meals = [];
+  const exercise = [];
+
+  state.history.fastingSessions.forEach(session => {
+    if (!session.start) return;
+    const endTs = session.end || session.start;
+    const startKey = localDateKey(session.start);
+    const endKey = localDateKey(endTs);
+    if (dateKey >= startKey && dateKey <= endKey) {
+      fasting.push(session);
+    }
+  });
+
+  if (state.today.fasting.active && localDateKey(Date.now()) === dateKey) {
+    fasting.push({ ...state.today.fasting, end: null });
+  }
+
+  state.history.mealLogs.forEach(meal => {
+    const ts = meal.time ? new Date(meal.time).getTime() : meal.ts;
+    if (!ts) return;
+    if (localDateKey(ts) === dateKey) meals.push(meal);
+  });
+
+  state.history.exerciseLogs.forEach(log => {
+    const ts = log.ts || (log.time ? new Date(log.time).getTime() : null);
+    if (!ts) return;
+    if (localDateKey(ts) === dateKey) exercise.push(log);
+  });
+
+  return { fasting, meals, exercise };
+}
+
+function renderCalendar() {
+  const grid = document.getElementById("calendar-grid");
+  const label = document.getElementById("calendar-month-label");
+  if (!grid || !label) return;
+
+  const monthName = new Date(calendarView.year, calendarView.month, 1).toLocaleString([], { month: "long", year: "numeric" });
+  label.innerText = monthName;
+  grid.innerHTML = "";
+
+  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  weekdayLabels.forEach(day => {
+    const header = document.createElement("div");
+    header.className = "calendar-day calendar-weekday";
+    header.innerHTML = `<div class="calendar-day-number">${day}</div>`;
+    grid.appendChild(header);
+  });
+
+  const days = buildMonth(calendarView.year, calendarView.month);
+  days.forEach(({ date, inMonth }) => {
+    const cell = document.createElement("div");
+    const dateKey = localDateKey(date.getTime());
+    cell.className = `calendar-day${inMonth ? "" : " muted"}`;
+    if (dateKey === localDateKey(Date.now())) cell.classList.add("active");
+
+    const number = document.createElement("div");
+    number.className = "calendar-day-number";
+    number.innerText = String(date.getDate());
+
+    const dots = document.createElement("div");
+    dots.className = "calendar-dots";
+    const events = collectEventsForDate(dateKey);
+    if (events.fasting.length) {
+      const dot = document.createElement("span");
+      dot.className = "calendar-dot fast";
+      dots.appendChild(dot);
+    }
+    if (events.meals.length) {
+      const dot = document.createElement("span");
+      dot.className = "calendar-dot meal";
+      dots.appendChild(dot);
+    }
+    if (events.exercise.length) {
+      const dot = document.createElement("span");
+      dot.className = "calendar-dot exercise";
+      dots.appendChild(dot);
+    }
+
+    cell.appendChild(number);
+    cell.appendChild(dots);
+    cell.addEventListener("click", () => openDaySheet(dateKey));
+    grid.appendChild(cell);
+  });
+}
+
+function openDaySheet(dateKey) {
+  const sheet = document.getElementById("calendar-sheet");
+  const dateLabel = document.getElementById("calendar-sheet-date");
+  if (!sheet || !dateLabel) return;
+  calendarSelectedDateKey = dateKey;
+  dateLabel.innerText = new Date(`${dateKey}T00:00:00`).toDateString();
+
+  const fastList = document.getElementById("calendar-fast-list");
+  const mealList = document.getElementById("calendar-meal-list");
+  const exList = document.getElementById("calendar-ex-list");
+  if (fastList) fastList.innerHTML = "";
+  if (mealList) mealList.innerHTML = "";
+  if (exList) exList.innerHTML = "";
+
+  const events = collectEventsForDate(dateKey);
+
+  if (fastList) {
+    if (!events.fasting.length) {
+      fastList.innerHTML = '<div class="calendar-entry">No fasting sessions.</div>';
+    } else {
+      events.fasting.forEach(session => {
+        const endTs = session.end || Date.now();
+        const duration = formatHM(endTs - session.start);
+        const entry = document.createElement("div");
+        entry.className = "calendar-entry";
+        entry.innerText = `${formatTime(session.start)} → ${session.end ? formatTime(endTs) : "Active"} • ${duration}`;
+        fastList.appendChild(entry);
+      });
+    }
+  }
+
+  if (mealList) {
+    if (!events.meals.length) {
+      mealList.innerHTML = '<div class="calendar-entry">No meals logged.</div>';
+    } else {
+      events.meals.forEach(meal => {
+        const entry = document.createElement("div");
+        entry.className = "calendar-entry";
+        entry.innerText = meal.text || "Meal";
+        mealList.appendChild(entry);
+      });
+    }
+  }
+
+  if (exList) {
+    if (!events.exercise.length) {
+      exList.innerHTML = '<div class="calendar-entry">No exercise logged.</div>';
+    } else {
+      events.exercise.forEach(log => {
+        const entry = document.createElement("div");
+        entry.className = "calendar-entry";
+        entry.innerText = `${log.type || "Workout"} • ${log.minutes || 0} min`;
+        exList.appendChild(entry);
+      });
+    }
+  }
+
+  const fastToggle = document.getElementById("calendar-fast-toggle");
+  if (fastToggle) {
+    fastToggle.innerText = state.today.fasting.active ? "End fast" : "Start fast";
+    fastToggle.onclick = () => {
+      if (state.today.fasting.active) endFast();
+      else toggleModal("fast-modal");
+      openDaySheet(dateKey);
+    };
+  }
+
+  sheet.classList.remove("hidden");
+  sheet.style.display = "flex";
+}
+
+function closeDaySheet() {
+  const sheet = document.getElementById("calendar-sheet");
+  if (!sheet) return;
+  sheet.classList.add("hidden");
+  sheet.style.display = "none";
+}
+
+function initCalendarControls() {
+  const prev = document.getElementById("calendar-prev");
+  const next = document.getElementById("calendar-next");
+  const sheet = document.getElementById("calendar-sheet");
+
+  if (prev) prev.addEventListener("click", () => {
+    calendarView.month -= 1;
+    if (calendarView.month < 0) {
+      calendarView.month = 11;
+      calendarView.year -= 1;
+    }
+    renderCalendar();
+  });
+
+  if (next) next.addEventListener("click", () => {
+    calendarView.month += 1;
+    if (calendarView.month > 11) {
+      calendarView.month = 0;
+      calendarView.year += 1;
+    }
+    renderCalendar();
+  });
+
+  if (sheet) {
+    sheet.addEventListener("click", (e) => {
+      if (e.target.id === "calendar-sheet") closeDaySheet();
+    });
+  }
+}
+
+function openExerciseModal(dateKey) {
+  calendarSelectedDateKey = dateKey || calendarSelectedDateKey;
+  const input = document.getElementById("exercise-time");
+  const base = calendarSelectedDateKey ? new Date(`${calendarSelectedDateKey}T00:00:00`) : new Date();
+  if (input) input.value = toLocalDateTimeValue(base);
+  toggleModal("exercise-modal");
+}
+
+function saveExercise() {
+  const typeEl = document.getElementById("exercise-type");
+  const minutesEl = document.getElementById("exercise-minutes");
+  const noteEl = document.getElementById("exercise-note");
+  const timeEl = document.getElementById("exercise-time");
+  if (!typeEl || !minutesEl || !timeEl) return;
+
+  const type = typeEl.value.trim() || "Workout";
+  const minutes = Number(minutesEl.value) || 0;
+  const note = noteEl ? noteEl.value.trim() : "";
+  const ts = timeEl.value ? new Date(timeEl.value).getTime() : Date.now();
+  if (!minutes) return;
+
+  const entry = { id: `ex_${Date.now()}`, ts, type, minutes, note };
+  state.today.exerciseLogs.push(entry);
+  state.history.exerciseLogs.push(entry);
+  saveState();
+  if (typeEl) typeEl.value = "";
+  if (minutesEl) minutesEl.value = "30";
+  if (noteEl) noteEl.value = "";
+  toggleModal("exercise-modal");
+  renderCalendar();
+  if (calendarSelectedDateKey) openDaySheet(calendarSelectedDateKey);
+}
+// RED FLAG: CALENDAR END
+
+// ===== CALENDAR + FASTING EXPLORER INTEGRATION START =====
+window.__stagePreviewHours = null;
+
+function getElapsedHoursForExplorer() {
+  const f = state?.today?.fasting;
+  if (window.__stagePreviewHours != null) return window.__stagePreviewHours;
+  if (!f?.active) return 0;
+  const ms = Date.now() - f.start;
+  return ms / 3600000;
+}
+
+function renderFastingStageExplorer() {
+  const titleEl = document.getElementById("fx-title");
+  const bodyEl = document.getElementById("fx-body");
+  const benefitsEl = document.getElementById("fx-benefits");
+  const milestones = document.getElementById("fx-milestones");
+  if (!titleEl || !bodyEl || !benefitsEl || !milestones) return;
+
+  const h = getElapsedHoursForExplorer();
+  const info = window.getStageByHours ? window.getStageByHours(h) : null;
+  if (!info || !info.current) return;
+
+  titleEl.innerText = info.current.title;
+  bodyEl.innerText = info.current.body;
+
+  // pills: benefits + tips
+  const benefits = (info.current.benefits || []).map(t => `<div class="benefit-pill">✨ ${t}</div>`).join("");
+  const tips = (info.current.tips || []).map(t => `<div class="tip-pill">⚡ ${t}</div>`).join("");
+  benefitsEl.innerHTML = benefits + tips;
+
+  const milestoneButtons = milestones.querySelectorAll(".ms-btn");
+  milestoneButtons.forEach(b => b.classList.remove("active"));
+
+  let currentAt = 0;
+  if (window.STAGE_LIBRARY && window.STAGE_LIBRARY.length) {
+    for (const s of window.STAGE_LIBRARY) if (h >= s.at) currentAt = s.at;
+  }
+  if (window.__stagePreviewHours != null) currentAt = window.__stagePreviewHours;
+
+  milestoneButtons.forEach(b => {
+    const bh = Number(b.getAttribute("data-h"));
+    if (bh === currentAt) b.classList.add("active");
+  });
+
+  if (!milestones.__wired) {
+    milestones.__wired = true;
+    milestones.querySelectorAll(".ms-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const bh = Number(btn.getAttribute("data-h"));
+        window.__stagePreviewHours = bh;
+        renderFastingStageExplorer();
+      });
+    });
+  }
+}
+
+window.openStageModal = function () {
+  const modal = document.getElementById("stage-modal");
+  const body = document.getElementById("stage-modal-body");
+  if (!modal || !body) return;
+
+  const h = getElapsedHoursForExplorer();
+  const info = window.getStageByHours ? window.getStageByHours(h) : null;
+  if (!info || !info.current) return;
+
+  const nextLine = info.next ? `${info.next.title} at ${info.next.at}h` : "—";
+  body.innerHTML = `
+    <div class="cal-modal-title">${info.current.title}</div>
+    <div class="cal-modal-row"><span>What’s happening</span><span>${info.current.body}</span></div>
+    <div class="cal-modal-row"><span>Next</span><span>${nextLine}</span></div>
+    <div class="cal-modal-title" style="margin-top:12px;">Benefits</div>
+    ${(info.current.benefits||[]).map(x=>`<div class="cal-modal-hint">✨ ${x}</div>`).join("")}
+    <div class="cal-modal-title" style="margin-top:12px;">Tips</div>
+    ${(info.current.tips||[]).map(x=>`<div class="cal-modal-hint">⚡ ${x}</div>`).join("")}
+    <div class="cal-modal-hint" style="margin-top:12px;">Not medical advice. If you feel unwell, stop and consult a professional.</div>
+  `;
+  modal.style.display = "flex";
+};
+
+window.closeStageModal = function () {
+  const modal = document.getElementById("stage-modal");
+  if (modal) modal.style.display = "none";
+};
+// ===== CALENDAR + FASTING EXPLORER INTEGRATION END =====
+
+// ===== SNAPSHOT BACKUPS START =====
+const SNAP_KEY = "lumina_snapshots_v1";
+
+function snapshotNow(reason = "auto", opts = {}) {
+  try {
+    const snaps = JSON.parse(localStorage.getItem(SNAP_KEY) || "[]");
+    const safeState = JSON.parse(JSON.stringify(state));
+    snaps.unshift({ ts: Date.now(), reason, state: safeState });
+    const trimmed = snaps.slice(0, 10);
+    localStorage.setItem(SNAP_KEY, JSON.stringify(trimmed));
+    if (!opts.silent && window.UI) UI.toast("✅ Backup snapshot saved", "success", 2000);
+  } catch (e) {}
+}
+
+function listSnapshots() {
+  try { return JSON.parse(localStorage.getItem(SNAP_KEY) || "[]"); } catch (e) { return []; }
+}
+
+function restoreSnapshot(index = 0) {
+  const snaps = listSnapshots();
+  const snap = snaps[index];
+  if (!snap) {
+    if (window.UI) UI.toast("No backup found", "warn", 2200);
+    return;
+  }
+  if (!confirm("Restore backup? This will overwrite current data.")) return;
+  state = normalizeState(snap.state);
+  saveState();
+  if (window.UI) UI.toast("♻️ Restored backup. Reloading…", "success", 2400);
+  setTimeout(()=>location.reload(), 400);
+}
+// ===== SNAPSHOT BACKUPS END =====
+
 function updateDashboardCard() {
   const f = state.today.fasting;
 
@@ -588,6 +1322,9 @@ function updateDashboardCard() {
   const dashStage = document.getElementById("dash-stage");
   const dashNext = document.getElementById("dash-next");
   const dashMilestones = document.getElementById("dash-milestones");
+
+  updateOverviewGoals();
+  updateEnergyCard();
 
   if (!dashMain || !dashSub || !dashBar || !dashMeta) return;
 
@@ -652,6 +1389,9 @@ function updateDashboardCard() {
                 if (fill) fill.style.width = Math.min(100, (elapsedMs / (state.today.fasting.duration * 3600000)) * 100) + '%';
                 updateDashboardCard();
                 updateFastingScreen();
+                // ===== CALENDAR + FASTING EXPLORER INTEGRATION START =====
+                renderFastingStageExplorer();
+                // ===== CALENDAR + FASTING EXPLORER INTEGRATION END =====
             }
         }
 
@@ -674,66 +1414,26 @@ function updateDashboardCard() {
             r.readAsText(file);
         }
 
-        function initTabs() {
-  const tabs = document.querySelectorAll('.bottom-nav .tab');
-  if (!tabs.length) {
-    console.warn('No tabs found: .bottom-nav .tab');
-    return;
-  }
-
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.dataset.tab;
-      console.log('Tab clicked:', target);
-      showScreen(target);
-    });
-  });
-
-  // Load last tab (optional)
-  const saved = localStorage.getItem('lumina_active_tab') || 'dashboard';
-  showScreen(saved);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  initTabs();
-});
-
+        // RED FLAG: COACH INIT START
         window.onload = () => {
   loadState();
   initBottomNav();
+  initDashboardControls();
+  if (window.Coach && window.Coach.init) window.Coach.init();
   setInterval(updateLoop, 1000);
 };
-
-        // expose functions used by inline HTML onclick=""
-window.openAssistant = openAssistant;
-window.closeAssistant = closeAssistant;
-window.overlayClickClose = overlayClickClose;
-
-window.toggleModal = toggleModal;
-window.sendMessage = sendMessage;
-window.handleAction = handleAction;
-
-window.startFast = startFast;
-window.endFast = endFast;
-window.saveMeal = saveMeal;
-
-window.toggleVoiceCapture = toggleVoiceCapture;
-
-// ===== EXPOSE GLOBALS (for inline onclick) =====
-window.openAssistant = openAssistant;
-window.closeAssistant = closeAssistant;
-window.overlayClickClose = overlayClickClose;
-window.toggleModal = toggleModal;
-window.sendMessage = sendMessage;
-window.handleAction = handleAction;
-window.startFast = startFast;
-window.endFast = endFast;
-window.saveMeal = saveMeal;
-window.toggleVoiceCapture = toggleVoiceCapture;
+        // RED FLAG: COACH INIT END
 
 // ===============================
 // GLOBAL HOOKS (for onclick="...")
 // ===============================
+// RED FLAG: COACH GLOBALS START
+window.luminaState = {
+  get: () => state,
+  save: () => { saveState(); updateUI(); }
+};
+// RED FLAG: COACH GLOBALS END
+
 window.openAssistant = openAssistant;
 window.closeAssistant = closeAssistant;
 window.overlayClickClose = overlayClickClose;
@@ -744,3 +1444,7 @@ window.startFast = startFast;
 window.endFast = endFast;
 window.saveMeal = saveMeal;
 window.toggleVoiceCapture = toggleVoiceCapture;
+window.openDaySheet = openDaySheet;
+window.closeDaySheet = closeDaySheet;
+window.openExerciseModal = openExerciseModal;
+window.saveExercise = saveExercise;

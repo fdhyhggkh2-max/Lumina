@@ -39,5 +39,56 @@
     if (!fasting || !fasting.active) return 0;
     return Date.now() - fasting.start;
   };
+
+  window.getElapsedMs = function (fasting) {
+    return window.elapsedMs(fasting);
+  };
 })();
 // === FASTING STAGES HELPERS (GLOBAL) — END ===
+
+// ===== FASTING STAGE EXPLORER DATA START =====
+window.STAGE_LIBRARY = [
+  {
+    at: 0,
+    title: "Fed → Fasting transition",
+    body: "Insulin begins dropping. Body starts switching from recent meals to stored energy.",
+    benefits: ["Cravings may spike early", "Hydration matters", "Light movement helps appetite"],
+    tips: ["Water + salt", "Avoid sugar triggers", "Stay busy 20–30 min"]
+  },
+  {
+    at: 12,
+    title: "Ketosis beginning",
+    body: "Glycogen is lower. Fat oxidation increases. Hunger can come in waves.",
+    benefits: ["More stable energy for many people", "Reduced snacking urge", "Better mental clarity (often)"],
+    tips: ["Walk 10 minutes", "Black coffee/tea", "Electrolytes if needed"]
+  },
+  {
+    at: 16,
+    title: "Autophagy ramping",
+    body: "Cellular cleanup signals increase. Inflammation markers may improve (varies).",
+    benefits: ["Discipline momentum", "Potential recovery support", "Sharper focus (often)"],
+    tips: ["Keep training moderate", "Avoid binge when breaking fast", "Protein-first meal"]
+  },
+  {
+    at: 24,
+    title: "Extended fast zone",
+    body: "Deep fasting state. Be careful: listen to your body and stay safe.",
+    benefits: ["Strong habit reinforcement", "Simplicity: fewer meals", "Potential appetite reset"],
+    tips: ["Prioritize electrolytes", "Break fast gently", "Don’t push max intensity workouts"]
+  }
+];
+
+window.getStageByHours = function (elapsedHours) {
+  const lib = window.STAGE_LIBRARY || [];
+  if (!lib.length) return null;
+
+  // if elapsedHours matches preview milestone, return exact; else choose nearest lower milestone
+  let pick = lib[0];
+  for (const s of lib) {
+    if (elapsedHours >= s.at) pick = s;
+  }
+  // next milestone
+  const next = lib.find(s => s.at > pick.at) || null;
+  return { current: pick, next };
+};
+// ===== FASTING STAGE EXPLORER DATA END =====
